@@ -17,7 +17,6 @@ database_id = "d56e51cd-224d-4a57-be0e-1b8c50f38c4f"
 [vars]
 GITHUB_REPO = "mdfazlulkarim/durablesolutionshub"
 GITHUB_BRANCH = "main"
-INBOX_REPO = "mdfazlulkarim/durable-solutions-sudan-inbox"
 SITE_URL = "https://durablesolutionshub.org/sudan/mapping/"
 # folder of the Sudan map inside the repository
 SITE_DIR = "sudan/mapping/"
@@ -30,3 +29,5 @@ ADMIN_EMAILS = "md.karim@un.org"
 ADMIN_NAMES = "Md Fazlul Karim"
 MAIL_FROM = "Durable Solutions Hub <no-reply@durablesolutionshub.org>"
 CONTACT_EMAIL = "dswg.sd@undp.org"
+# Who gets an email when a new project or a change is waiting for review (comma separated)
+ALERT_EMAILS = "md.karim@un.org"

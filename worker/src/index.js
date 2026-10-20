@@ -424,9 +424,21 @@ async function commitFiles(env, files, message) {
     } catch (e) { if (e.gh !== 422 || attempt === 2) throw e; } // someone else committed meanwhile: try again
   }
 }
+// Alerts about new projects and changes waiting for review: an email to ALERT_EMAILS (and, if set up,
+// an issue in the private INBOX_REPO). Alerts are best effort and never stop a submission.
 async function notify(env, title, body) {
-  if (!env.INBOX_REPO || !env.GITHUB_TOKEN) return;
-  try { await gh(env, "/issues", { method: "POST", body: { title: title.slice(0, 200), body } }, env.INBOX_REPO); } catch (e) { /* alerts are best effort */ }
+  const to = String(env.ALERT_EMAILS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (to.length && env.RESEND_API_KEY) {
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const html = `<div style="font-family:Arial,sans-serif;font-size:15px;color:#1c2230;max-width:560px">
+      <p style="margin:0 0 6px;color:#1d5fae;font-size:12px;font-weight:bold;letter-spacing:.04em">DURABLE SOLUTIONS HUB | SUDAN</p>
+      <p style="font-size:17px;font-weight:bold;margin:0 0 12px">${esc(title)}</p>
+      <p style="white-space:pre-line;margin:0">${esc(body).replace(/(https:\/\/\S+)/g, '<a href="$1">$1</a>')}</p></div>`;
+    for (const addr of to) { try { await sendMail(env, addr, title.slice(0, 200), body, html); } catch (e) { console.error("alert not sent", e.message); } }
+  }
+  if (env.INBOX_REPO && env.GITHUB_TOKEN) {
+    try { await gh(env, "/issues", { method: "POST", body: { title: title.slice(0, 200), body } }, env.INBOX_REPO); } catch (e) { /* alerts are best effort */ }
+  }
 }
 
 /* ---------------- publishing ---------------- */

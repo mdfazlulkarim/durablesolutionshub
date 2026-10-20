@@ -14,7 +14,7 @@ SF.config = {
   logosUrl: "data/logos.json",
   hdxAdminUrl: "https://data.humdata.org/dataset/cod-ab-sdn",
   // Back end that receives projects directly (no email needed). Leave empty to use email only.
-  apiUrl: "",
+  apiUrl: "https://solutions-footprint.ds-sudan.workers.dev",
   // Back end used for signing in (DSU admins now, agency editors later). Leave empty to hide the Sign in button.
   authUrl: "https://solutions-footprint.ds-sudan.workers.dev",
   // Optional spam protection (Cloudflare Turnstile site key). Leave empty if not used.
