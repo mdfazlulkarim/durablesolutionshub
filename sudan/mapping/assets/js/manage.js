@@ -494,12 +494,14 @@
           <span class="grow"></span>
           <span class="muted" style="font-size:13px">The map updates about 2 minutes after saving</span>
           <button type="button" class="btn btn-primary" id="b-publish">${isNew ? "Publish to the map" : item.published ? "Save and publish" : "Save and put back on the map"}</button>
-        </div>`;
+        </div>
+        ${isNew ? "" : `<section class="card tbl-card"><div class="tbl-tools"><b style="font-weight:600">History of this project</b></div><div class="tbl-wrap" id="p-log"><div class="empty">Loading…</div></div></section>`}`;
       const ed = bindEditor(state, (v) => {
         document.getElementById("pv-card").innerHTML = previewCard(v, state.photos);
         document.getElementById("rv-title").textContent = v.name || "New project";
       });
       document.getElementById("pv-open").addEventListener("click", () => openPopup(ed.values(), state.photos));
+      if (!isNew) drawProjectLog(item.id);
       const save = async (btn, published) => {
         const btns = document.querySelectorAll(".bar-actions .btn");
         busy(btn, true, "Publishing"); btns.forEach((b) => (b.disabled = true));
@@ -554,15 +556,60 @@
       document.getElementById("o-go").addEventListener("click", (e) => upload(document.getElementById("o-acr").value.trim(), document.getElementById("o-name").value.trim(), document.getElementById("o-file").files[0], e.target));
     }
 
-    /* ---------- history ---------- */
+    /* ---------- history: the change log ---------- */
+    const ACTIONS = { published: "Published", updated: "Published changes", added: "Added", edited: "Edited", hidden: "Hidden from the map", deleted: "Deleted",
+      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed" };
+    const actionText = (a) => ACTIONS[a] || (a ? a[0].toUpperCase() + a.slice(1) : "");
+    function changesHTML(changes) {
+      if (!changes || !changes.length) return "";
+      return `<details class="chg"><summary>${changes.length} field${changes.length === 1 ? "" : "s"} changed</summary><table class="chg-t"><tbody>${changes.map((c) =>
+        `<tr><th>${esc(c.field)}</th><td><span class="chg-from">${esc(c.from) || "<i>empty</i>"}</span> <span aria-hidden="true">→</span> <span class="chg-to">${esc(c.to) || "<i>empty</i>"}</span></td></tr>`).join("")}</tbody></table></details>`;
+    }
+    function logRows(items, repo) {
+      return items.map((i) => `<tr data-q="${esc(`${i.at} ${i.action} ${i.detail} ${i.by_name} ${i.by_email} ${(i.changes || []).map((c) => c.field).join(" ")}`.toLowerCase())}">
+        <td style="white-space:nowrap">${fmtWhen(i.at)}</td>
+        <td>${esc(i.by_name || i.by_email || "")}${i.by_name && i.by_email ? `<br><span class="muted" style="font-size:12px">${esc(i.by_email)}</span>` : ""}</td>
+        <td>${esc(actionText(i.action))}</td>
+        <td>${esc(i.detail || "")}${changesHTML(i.changes)}</td>
+        <td>${i.commit_sha ? `<a href="https://github.com/${esc(repo)}/commit/${esc(i.commit_sha)}" target="_blank" rel="noopener">${esc(i.commit_sha.slice(0, 7))}</a>` : ""}</td></tr>`).join("");
+    }
+    function logCsv(items) {
+      const q = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+      const rows = [["When (UTC)", "Name", "Email", "What", "Details", "Field", "Before", "After", "GitHub commit"]];
+      items.forEach((i) => {
+        const base = [i.at, i.by_name, i.by_email, actionText(i.action), i.detail];
+        if (i.changes && i.changes.length) i.changes.forEach((c) => rows.push([...base, c.field, c.from, c.to, i.commit_sha || ""]));
+        else rows.push([...base, "", "", "", i.commit_sha || ""]);
+      });
+      const blob = new Blob(["\ufeff" + rows.map((r) => r.map(q).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = `solutions-footprint-change-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
     async function viewHistory() {
-      const { items, repo } = await api("/log");
+      const { items, repo } = await api("/log?limit=5000");
       app.innerHTML = `
-        <div><h1>History</h1><p class="lede2">Every change made from these pages. Each change to the map is also a commit on GitHub, so it can be undone there.</p></div>
-        <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>When</th><th>What</th><th>Details</th><th>By</th><th>GitHub</th></tr></thead><tbody>
-          ${items.map((i) => `<tr><td style="white-space:nowrap">${fmtWhen(i.at)}</td><td>${esc(i.action[0].toUpperCase() + i.action.slice(1))}</td><td>${esc(i.detail || "")}</td><td>${esc(i.by_email || "")}</td>
-          <td>${i.commit_sha ? `<a href="https://github.com/${esc(repo)}/commit/${esc(i.commit_sha)}" target="_blank" rel="noopener">${esc(i.commit_sha.slice(0, 7))}</a>` : ""}</td></tr>`).join("")}
-        </tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div></div>`;
+        <div class="row between">
+          <div><h1>History</h1><p class="lede2">The change log: every change, who made it and when. For project edits, open "fields changed" to see each value before and after. Changes to the map are also commits on GitHub, so they can be undone there.</p></div>
+          <button type="button" class="btn" id="b-csv">Download the log (Excel CSV)</button>
+        </div>
+        <div class="card tbl-card">
+          <div class="tbl-tools"><span class="muted" style="font-size:14px">${items.length} entr${items.length === 1 ? "y" : "ies"}</span><span class="grow"></span>
+            <label class="row" style="gap:8px;font-size:14px;color:var(--muted)">Search <input class="input" type="search" id="q" placeholder="Name, project, number or field" style="width:260px"></label></div>
+          <div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th>GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div>
+        </div>`;
+      document.getElementById("b-csv").addEventListener("click", () => logCsv(items));
+      const q = document.getElementById("q");
+      q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
+    }
+    async function drawProjectLog(id) {
+      const host = document.getElementById("p-log");
+      if (!host) return;
+      try {
+        const { items, repo } = await api(`/log?project=${encodeURIComponent(id)}&limit=200`);
+        host.innerHTML = items.length ? `<table class="adm"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th>GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>`
+          : `<div class="empty">No changes recorded yet. Changes made from now on are listed here.</div>`;
+      } catch (e) { host.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
     }
 
     /* ---------- agency admins: their own agency's projects ---------- */

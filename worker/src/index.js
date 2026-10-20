@@ -80,7 +80,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS refs (prefix TEXT PRIMARY KEY, last INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS logos (acronym TEXT PRIMARY KEY, name TEXT, full TEXT, mark TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
-  `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT, by_email TEXT)`,
+  `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT, by_email TEXT, project_id TEXT, changes TEXT)`,
   `CREATE TABLE IF NOT EXISTS editors (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'admin', agency TEXT, added_by TEXT, added_at TEXT, last_signin TEXT, name TEXT)`,
   `CREATE TABLE IF NOT EXISTS signin_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, sent_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS ratelimit (key TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)`,
@@ -97,7 +97,7 @@ async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
   // databases made before sign-in existed get the new column for who made each change
-  for (const sql of ["ALTER TABLE log ADD COLUMN by_email TEXT", "ALTER TABLE editors ADD COLUMN name TEXT", "ALTER TABLE submissions ADD COLUMN submitted_by TEXT"]) {
+  for (const sql of ["ALTER TABLE log ADD COLUMN by_email TEXT", "ALTER TABLE log ADD COLUMN project_id TEXT", "ALTER TABLE log ADD COLUMN changes TEXT", "ALTER TABLE editors ADD COLUMN name TEXT", "ALTER TABLE submissions ADD COLUMN submitted_by TEXT"]) {
     try { await env.DB.prepare(sql).run(); } catch (e) { /* already there */ }
   }
   schemaReady = true;
@@ -114,8 +114,45 @@ async function setting(env, key, make) {
   await run(env, "INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", key, value);
   return (await one(env, "SELECT value FROM settings WHERE key=?", key)).value;
 }
-async function addLog(env, action, detail, sha = null, by = null) {
-  await run(env, "INSERT INTO log(at,action,detail,commit_sha,by_email) VALUES(?,?,?,?,?)", nowIso(), action, detail, sha, by);
+// The change log: who did what, when, and for project edits every field that changed (before and after).
+async function addLog(env, action, detail, sha = null, by = null, projectId = null, changes = null) {
+  await run(env, "INSERT INTO log(at,action,detail,commit_sha,by_email,project_id,changes) VALUES(?,?,?,?,?,?,?)",
+    nowIso(), action, detail, sha, by, projectId, changes && changes.length ? JSON.stringify(changes) : null);
+}
+const LOG_FIELDS = [
+  ["name", "Project name"], ["description", "Description"], ["interventionTypes", "Intervention type"], ["orgType", "Organisation type"],
+  ["lead", "Lead organisation"], ["leadName", "Lead full name"], ["leadership", "Leadership"], ["partners", "Implementing partners"],
+  ["nationwide", "Nationwide"], ["states", "States"], ["localities", "Localities"], ["criteria", "IASC criteria"], ["coordination", "Coordination"],
+  ["start", "Start"], ["end", "End"], ["reportedStatus", "Reported status"], ["budget", "Budget (USD)"], ["share", "Durable solutions share"],
+  ["donors", "Donors"], ["people", "People reached"], ["femaleShare", "Women and girls"], ["pwdShare", "Persons with disabilities"],
+  ["pwdFemaleShare", "Persons with disabilities, women and girls"], ["peopleSex", "Breakdown by sex and age"], ["remarks", "Remarks"], ["photos", "Photos"],
+];
+function logValue(k, v) {
+  if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "";
+  if (k === "start" || k === "end") return String(v).slice(0, 7);
+  if (["share", "femaleShare", "pwdShare", "pwdFemaleShare"].includes(k)) return `${Math.round(Number(v) * 1000) / 10}%`;
+  if (k === "donors") return v.map((d) => (d.amount != null ? `${d.name}: ${d.amount}` : d.name)).join("; ");
+  if (k === "people") return Object.entries(v).filter(([, n]) => n != null).map(([g, n]) => `${PEOPLE_LABELS[g] || g} ${n}`).join("; ");
+  if (k === "nationwide") return v ? "Yes" : "No";
+  if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).join("; ");
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+const PEOPLE_LABELS = { total: "Total", idps: "IDPs", returnees: "Returnees", refugees: "Refugees", host: "Host community", other: "Other" };
+// older records keep donors as one text ("donor"); compare them as a list so they are not shown as a change
+const donorList = (d) => (d?.donors && d.donors.length ? d.donors : d?.donor ? String(d.donor).split(/;\s*/).filter(Boolean).map((name) => ({ name, amount: null })) : []);
+function diffFields(before, after, privBefore, privAfter) {
+  const out = [];
+  for (const [k, label] of LOG_FIELDS) {
+    const a = logValue(k, k === "donors" ? donorList(before) : before?.[k]), b = logValue(k, k === "donors" ? donorList(after) : after?.[k]);
+    if (a !== b) out.push({ field: label, from: a, to: b });
+  }
+  for (const [k, label] of [["fpName", "Focal point"], ["fpEmail", "Focal point email"]]) {
+    if (!privAfter) break;
+    const a = str(privBefore?.[k]), b = str(privAfter?.[k]);
+    if (a !== b) out.push({ field: label, from: a, to: b, private: true });
+  }
+  return out;
 }
 async function rateLimited(env, key, max, windowSec) {
   const now = Math.floor(Date.now() / 1000);
@@ -399,6 +436,8 @@ async function publishProject(env, { id, ref, data, priv, photos, logo, logoName
   if (!ref) ref = existing?.ref || await nextRef(env, refPrefix(p.lead));
   const ph = await photoChanges(env, ref, photos, before);
   p.photos = ph.photos;
+  const changes = existing ? diffFields(parse(existing.data, {}), p, parse(existing.private, {}), priv) : [];
+  if (existing && !!existing.published !== !!published) changes.push({ field: "On the map", from: existing.published ? "Yes" : "No", to: published ? "Yes" : "No" });
   const t = nowIso();
   await run(env, `INSERT INTO projects(id,ref,lead,name,data,private,published,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET ref=excluded.ref, lead=excluded.lead, name=excluded.name, data=excluded.data,
@@ -407,7 +446,7 @@ async function publishProject(env, { id, ref, data, priv, photos, logo, logoName
   const lg = await logoChanges(env, p.lead, logoName, logo);
   const sha = await commitFiles(env, [...ph.files, ...lg, ...(await siteFiles(env))], message || `${!published ? "Hide" : existing ? "Update" : "Publish"} ${ref}: ${p.name}`);
   for (const f of ph.usedFiles) await run(env, "DELETE FROM files WHERE id=?", f);
-  return { id, ref, sha, project: p };
+  return { id, ref, sha, project: p, changes };
 }
 
 /* ---------------- request handling ---------------- */
@@ -757,7 +796,7 @@ async function adminApi(req, env, ctx, url) {
     if (m[2] === "reject") {
       await run(env, "UPDATE submissions SET status='rejected', reviewed_at=?, note=? WHERE id=?", nowIso(), text(body.note, 2000), s.id);
       await run(env, "DELETE FROM files WHERE owner=?", s.id);
-      await addLog(env, "not published", `${s.ref}: ${s.name}`, null, by);
+      await addLog(env, "not published", `${s.ref}: ${s.name}${s.submitted_by ? ` (sent by ${await nameOf(env, s.submitted_by) || s.submitted_by})` : ""}${body.note ? `. Note: ${text(body.note, 300)}` : ""}`, null, by, s.target_id);
       return json({ ok: true });
     }
     if (m[2] === "reopen") {
@@ -780,7 +819,7 @@ async function adminApi(req, env, ctx, url) {
     });
     await run(env, "UPDATE submissions SET status='published', reviewed_at=?, data=?, note=? WHERE id=?", nowIso(), JSON.stringify(r.project), text(body.note, 2000), s.id);
     await run(env, "DELETE FROM files WHERE owner=?", s.id);
-    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}`, r.sha, by);
+    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}${s.submitted_by ? ` (sent by ${await nameOf(env, s.submitted_by) || s.submitted_by})` : s.source === "excel" ? " (from an Excel upload)" : " (from the form)"}`, r.sha, by, r.id, r.changes);
     return json({ ok: true, ref: r.ref, id: r.id, commit: r.sha });
   }
 
@@ -806,7 +845,7 @@ async function adminApi(req, env, ctx, url) {
         published: body.published === false ? 0 : 1, message: body.message || null,
       });
       await run(env, "DELETE FROM files WHERE owner=?", `project:${id}`);
-      await addLog(env, isNew ? "added" : body.published === false ? "hidden" : "edited", `${r.ref}: ${r.project.name}`, r.sha, by);
+      await addLog(env, isNew ? "added" : body.published === false ? "hidden" : "edited", `${r.ref}: ${r.project.name}`, r.sha, by, r.id, r.changes);
       return json({ ok: true, id: r.id, ref: r.ref, commit: r.sha });
     }
     if (req.method === "DELETE") {
@@ -815,7 +854,7 @@ async function adminApi(req, env, ctx, url) {
       const photos = parse(r.data, {}).photos || [];
       await run(env, "DELETE FROM projects WHERE id=?", id);
       const sha = await commitFiles(env, [...photos.map((p) => ({ path: p, remove: true })), ...(await siteFiles(env))], `Remove ${r.ref}: ${r.name}`);
-      await addLog(env, "deleted", `${r.ref}: ${r.name}`, sha, by);
+      await addLog(env, "deleted", `${r.ref}: ${r.name}`, sha, by, id);
       return json({ ok: true, commit: sha });
     }
   }
@@ -891,7 +930,14 @@ async function adminApi(req, env, ctx, url) {
     await addLog(env, "editor removed", email, null, by);
     return json({ ok: true });
   }
-  if (path === "/log") return json({ ok: true, items: await all(env, "SELECT * FROM log ORDER BY id DESC LIMIT 200"), repo: env.GITHUB_REPO });
+  if (path === "/log") {
+    const project = url.searchParams.get("project");
+    const limit = Math.min(5000, Math.max(1, Number(url.searchParams.get("limit")) || 500));
+    const rows = project ? await all(env, "SELECT * FROM log WHERE project_id=? ORDER BY id DESC LIMIT ?", project, limit) : await all(env, "SELECT * FROM log ORDER BY id DESC LIMIT ?", limit);
+    const names = {};
+    for (const r of rows) if (r.by_email && !(r.by_email in names)) names[r.by_email] = await nameOf(env, r.by_email);
+    return json({ ok: true, repo: env.GITHUB_REPO, items: rows.map((r) => ({ ...r, by_name: names[r.by_email] || "", changes: parse(r.changes, []) })) });
+  }
   if (path === "/export") {
     const projects = (await all(env, "SELECT * FROM projects ORDER BY lead, name")).map((r) => ({ id: r.id, ref: r.ref, published: !!r.published, ...parse(r.data, {}), private: parse(r.private, {}) }));
     const submissions = (await all(env, "SELECT id, kind, target_id, ref, source, status, lead, name, data, private, note, received_at, reviewed_at FROM submissions ORDER BY received_at"))
@@ -961,7 +1007,8 @@ async function agencyApi(req, env, ctx, url, path, who, fileUrl) {
         else await run(env, "DELETE FROM files WHERE id=?", f.id);
       }
       const ref = (await one(env, "SELECT ref FROM submissions WHERE id=?", sid)).ref;
-      await addLog(env, "sent for review", `${ref}: ${p.name}`, null, by);
+      await addLog(env, "sent for review", `${ref}: ${p.name} (${agency}, waiting for DSU review)`, null, by, r ? r.id : null,
+        r ? diffFields(parse(r.data, {}), { ...p, photos: [...keep, ...[...want].map(() => "(new photo)")] }, parse(r.private, {}), priv) : []);
       ctx.waitUntil(notify(env, `${r ? "Change" : "New project"} ${ref} from ${who.name || by} (${agency})`, `${p.name}\n\nReview it here: ${env.SITE_URL || ""}manage.html#/review/${sid}`));
       return json({ ok: true, ref, status: "pending" });
     }

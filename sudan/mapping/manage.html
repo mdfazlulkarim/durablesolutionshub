@@ -104,6 +104,14 @@
     .ed-add { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
     .ed-add .f { flex: 1 1 200px; }
     .ed-add .f.sm { flex: 0 1 170px; }
+    details.chg { margin-top: 6px; font-size: 13px; }
+    details.chg summary { cursor: pointer; color: var(--brand); }
+    table.chg-t { border-collapse: collapse; margin-top: 6px; width: 100%; }
+    table.adm table.chg-t th, table.chg-t th { text-align: left; font-weight: 500; color: var(--ink-2); padding: 3px 10px 3px 0; vertical-align: top; white-space: nowrap; background: none; font-size: 13px; }
+    table.adm table.chg-t td, table.chg-t td { padding: 3px 0; border: 0; overflow-wrap: anywhere; }
+    .chg-from { color: var(--err); text-decoration: line-through; }
+    .chg-to { color: #1a7a4c; }
+    :root[data-theme="dark"] .chg-to { color: #7fd6a6; }
     .lead-lock { font-weight: 400; color: var(--ink-2); font-size: 14px; padding: 9px 0; }
   </style>
 </head>
