@@ -472,26 +472,27 @@
   form.addEventListener("change", updateLive);
   $("partner-box").addEventListener("click", updateLive);
 
-  /* project number: the next number for this agency, read from the published register */
+  /* project code: the next number, read from the published register */
   function refPrefix(lead) {
     const o = findOrg(lead);
     if (o) return o.acronym.toUpperCase().replace(/[^A-Z0-9]/g, "");
     const words = String(lead || "").split(/\s+/).filter((w) => /^[A-Za-z]/.test(w) && !/^(of|and|for|the|in)$/i.test(w));
     return (words.length > 1 ? words.map((w) => w[0]).join("") : String(lead || "ORG")).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) || "ORG";
   }
-  function nextRef(lead) {
-    const pre = refPrefix(lead);
+  // Project code: country, number, lead agency, start year and end year, for example SD-044-IOM-26-28
+  function nextRef(lead, start, end) {
     let max = 0;
-    Object.values(REFS).forEach((r) => { const [p2, n] = String(r).split(/-(?=\d+$)/); if (p2 === pre) max = Math.max(max, Number(n) || 0); });
-    return `${pre}-${String(max + 1).padStart(3, "0")}`;
+    Object.values(REFS).forEach((r) => { const m = String(r).match(/^[A-Z]{2}-(\d{3,})-/); if (m) max = Math.max(max, Number(m[1])); });
+    const y = (d) => (d && /^\d{4}/.test(String(d)) ? String(d).slice(2, 4) : "00");
+    return `SD-${String(max + 1).padStart(3, "0")}-${refPrefix(lead)}-${y(start)}-${y(end)}`;
   }
 
   /* full preview before sending */
   function showPreview() {
     const p = SF.render.fromAnswers(answers());
     p.photos = photos.map((x) => x.url);
-    assignedRef = correcting ? (correcting.ref || "") : nextRef(leadKey());
-    $("pv-ref").textContent = assignedRef ? `${correcting ? "Correcting project" : "Your project number"}: ${assignedRef}${API && !correcting ? " (confirmed when you send)" : ""}` : "";
+    assignedRef = correcting ? (correcting.ref || "") : nextRef(leadKey(), p.start, p.end);
+    $("pv-ref").textContent = assignedRef ? `${correcting ? "Correcting project" : "Your project code"}: ${assignedRef}${API && !correcting ? " (confirmed when you send)" : ""}` : "";
     $("pv-hero").innerHTML = SF.render.hero(p, { photoNote: API ? "Add photos in section 7 to show them here" : "Your photos will appear here once the project is published" });
     $("pv-body").innerHTML = SF.render.body(p, GEO, { logoNote: isNewOrg() && !logo ? logoNote() : "" });
     $("send-err").hidden = true;
@@ -552,8 +553,8 @@
         ? "The Durable Solutions Unit will review your correction and update the map. There is nothing else you need to do."
         : "The Durable Solutions Unit will review your project and publish it on the map. There is nothing else you need to do.";
       $("sent-saved").innerHTML = saved
-        ? `The status updates under <a href="my-submissions.html">My submissions</a> on this device. Keep the project number if you need to contact us about it.`
-        : "Keep the project number if you need to contact us about it.";
+        ? `The status updates under <a href="my-submissions.html">My submissions</a> on this device. Keep the project code if you need to contact us about it.`
+        : "Keep the project code if you need to contact us about it.";
       $("preview").hidden = true;
       $("main").classList.remove("previewing");
       $("sent").hidden = false;
@@ -583,7 +584,7 @@
       isNewOrg() ? ">>> PLEASE ALSO ATTACH YOUR ORGANISATION'S LOGO (PNG OR SVG) <<<" : null,
       "",
       correcting ? "SOLUTIONS FOOTPRINT: CORRECTION TO A PUBLISHED PROJECT" : "SOLUTIONS FOOTPRINT: NEW PROJECT SUBMISSION",
-      correcting ? `Project number: ${correcting.ref || correcting.id}` : `Project number (proposed): ${assignedRef}`,
+      correcting ? `Project code: ${correcting.ref || correcting.id}` : `Project code (proposed): ${assignedRef}`,
       correcting ? `Published name: ${correcting.name}` : null,
       "",
       "1. ABOUT THE PROJECT",
@@ -654,7 +655,7 @@
       subject: mail.subject, body: mail.body, href: mail.href,
       answers: { ...a },
     });
-    $("done-ref").textContent = assignedRef ? `Your project number: ${assignedRef}. Keep it for any follow-up with the Durable Solutions Unit.` : "";
+    $("done-ref").textContent = assignedRef ? `Your project code: ${assignedRef}. Keep it for any follow-up with the Durable Solutions Unit.` : "";
     $("saved-note").innerHTML = saved
       ? `A copy is saved in this browser. See it any time under <a href="my-submissions.html">My submissions</a>.`
       : "This browser does not allow saving, so the copy will not appear under My submissions. Your submission is not affected.";

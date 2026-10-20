@@ -83,7 +83,7 @@
         ${SF.render.card(p)}
         <div class="meta">
           <div>${status}</div>
-          ${e.ref ? `<div class="mine-ref">Project number: <b>${esc(e.ref)}</b></div>` : ""}
+          ${e.ref ? `<div class="mine-ref">Project code: <b>${esc(e.ref)}</b></div>` : ""}
           <div>Sent on ${SF.fmtDateLong(sent)}</div>
           ${removeOn ? `<div class="pub-note">This project is now on the map. It will be removed from this list on ${SF.fmtDateLong(removeOn)}.</div>` : ""}
           ${direct ? `<div>${nPhotos ? `${nPhotos} photo${nPhotos === 1 ? "" : "s"} sent` : "No photos sent yet"}</div>` : ""}

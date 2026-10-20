@@ -28,6 +28,7 @@ const IMAGE_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "we
 /* ---------------- small helpers ---------------- */
 const enc = new TextEncoder();
 const nowIso = () => new Date().toISOString();
+const khartoumTime = (iso) => (iso ? new Date(new Date(iso).getTime() + 2 * 3600e3).toISOString().slice(0, 16).replace("T", " ") : "");
 const todayKhartoum = () => new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 10);
 const uid = () => crypto.randomUUID().replace(/-/g, "");
 const str = (v, max = 300) => (v == null ? "" : String(v)).replace(/\s+/g, " ").trim().slice(0, max);
@@ -91,6 +92,7 @@ let schemaReady = false, importedReady = false;
 async function ensureImported(env) {
   if (importedReady) return;
   if (!(await one(env, "SELECT value FROM settings WHERE key='imported'"))) await seed(env);
+  await ensureCodes(env);
   importedReady = true;
 }
 async function ensureSchema(env) {
@@ -176,10 +178,60 @@ function refPrefix(lead, hint) {
   const words = l.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w) && !/^(of|and|for|the|in)$/i.test(w));
   return (words.map((w) => w[0]).join("").toUpperCase().slice(0, 10)) || "ORG";
 }
-async function nextRef(env, prefix) {
-  await run(env, "INSERT OR IGNORE INTO refs(prefix,last) VALUES(?,0)", prefix);
-  const r = await one(env, "UPDATE refs SET last=last+1 WHERE prefix=? RETURNING last", prefix);
-  return `${prefix}-${String(r.last).padStart(3, "0")}`;
+/* Project codes: country, permanent number, lead agency, start year and end year, for example SD-001-IOM-26-32.
+   The number never changes and is never reused; the agency and the years follow the project's current details. */
+const pad3 = (n) => String(n).padStart(3, "0");
+const yy = (d) => (d && /^\d{4}/.test(String(d)) ? String(d).slice(2, 4) : "00");
+const country = (env) => (env.COUNTRY_CODE || "SD").toUpperCase();
+const serialOf = (ref) => { const m = String(ref || "").match(/^[A-Z]{2}-(\d{3,})-/); return m ? Number(m[1]) : null; };
+const makeCode = (env, serial, lead, start, end) => `${country(env)}-${pad3(serial)}-${refPrefix(lead)}-${yy(start)}-${yy(end)}`;
+async function nextSerial(env) {
+  await run(env, "INSERT OR IGNORE INTO refs(prefix,last) VALUES('_serial',0)");
+  return (await one(env, "UPDATE refs SET last=last+1 WHERE prefix='_serial' RETURNING last")).last;
+}
+async function newCode(env, p, prefixHint) {
+  return `${country(env)}-${pad3(await nextSerial(env))}-${refPrefix(p.lead, prefixHint)}-${yy(p.start)}-${yy(p.end)}`;
+}
+// One-off change from the old numbers (IOM-001) to the new codes, in order of start date. It is safe to run
+// again: projects that already have a new code only get their agency and years brought up to date.
+async function ensureCodes(env) {
+  const state = await setting(env, "codes_v2");
+  if (state === "done") return;
+  if (!state) {
+    const rows = await all(env, "SELECT id, ref, data FROM projects");
+    let max = Math.max(0, ...rows.map((r) => serialOf(r.ref) || 0));
+    const order = rows.filter((r) => !serialOf(r.ref)).map((r) => ({ ...r, d: parse(r.data, {}) }))
+      .sort((a, b) => String(a.d.start || "9999").localeCompare(String(b.d.start || "9999")) || String(a.ref || "").localeCompare(String(b.ref || "")));
+    const stmts = [], moved = [];
+    const codes = {};
+    for (const r of rows) if (serialOf(r.ref)) { const d = parse(r.data, {}); codes[r.id] = makeCode(env, serialOf(r.ref), d.lead, d.start, d.end); }
+    for (const r of order) codes[r.id] = makeCode(env, ++max, r.d.lead, r.d.start, r.d.end);
+    for (const r of rows) {
+      if (codes[r.id] === r.ref) continue;
+      stmts.push(env.DB.prepare("UPDATE projects SET ref=? WHERE id=?").bind(codes[r.id], r.id));
+      stmts.push(env.DB.prepare("UPDATE submissions SET ref=? WHERE target_id=?").bind(codes[r.id], r.id));
+      stmts.push(env.DB.prepare("INSERT INTO log(at,action,detail,by_email,project_id,changes) VALUES(?,?,?,?,?,?)")
+        .bind(nowIso(), "code changed", `${r.ref || r.id} is now ${codes[r.id]}`, null, r.id, JSON.stringify([{ field: "Project code", from: r.ref || "", to: codes[r.id] }])));
+      moved.push(`${r.ref || r.id} to ${codes[r.id]}`);
+    }
+    for (const sub of await all(env, "SELECT id, ref, data FROM submissions WHERE target_id IS NULL AND status='pending'")) {
+      if (serialOf(sub.ref)) continue;
+      const d = parse(sub.data, {});
+      stmts.push(env.DB.prepare("UPDATE submissions SET ref=? WHERE id=?").bind(makeCode(env, ++max, d.lead, d.start, d.end), sub.id));
+    }
+    stmts.push(env.DB.prepare("INSERT INTO refs(prefix,last) VALUES('_serial',?) ON CONFLICT(prefix) DO UPDATE SET last=max(last,excluded.last)").bind(max));
+    stmts.push(env.DB.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('codes_v2','db')"));
+    await env.DB.batch(stmts);
+    if (moved.length) await addLog(env, "codes", `Project codes changed to country-number-agency-start-end for ${moved.length} projects`);
+  }
+  // publish the new codes to the website
+  if (env.GITHUB_TOKEN) {
+    try {
+      const sha = await commitFiles(env, await siteFiles(env), "Project codes: country, number, agency, start year and end year");
+      await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES('codes_v2','done')");
+      await addLog(env, "codes", "New project codes published to the website", sha);
+    } catch (e) { console.error("codes not published yet", e); /* tried again on the next request */ }
+  }
 }
 const slug = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
 async function uniqueId(env, base) {
@@ -405,7 +457,8 @@ async function photoChanges(env, ref, wanted, before) {
     if (!f) continue;
     let i = 1; while (taken.has(String(i))) i++;
     taken.add(String(i));
-    const path = `assets/photos/${ref}-${i}.${IMAGE_TYPES[f.mime] || "jpg"}`;
+    const base = serialOf(ref) ? ref.split("-").slice(0, 2).join("-") : ref; // SD-001: stays the same when the years change
+    const path = `assets/photos/${base}-${i}.${IMAGE_TYPES[f.mime] || "jpg"}`;
     files.push({ path, b64: String(f.data) });
     ordered.push(path); usedFiles.push(f.id);
   }
@@ -433,10 +486,13 @@ async function publishProject(env, { id, ref, data, priv, photos, logo, logoName
   const errs = checkAnswers(p);
   if (errs.length && published) throw new HttpError(400, `Cannot publish: ${errs.join("; ")}`);
   if (!id) id = await uniqueId(env, slug(`${p.lead}-${p.name}`));
-  if (!ref) ref = existing?.ref || await nextRef(env, refPrefix(p.lead));
+  // the code keeps its number; the agency and years follow the project's lead and dates
+  const serial = serialOf(existing?.ref) || serialOf(ref) || await nextSerial(env);
+  ref = makeCode(env, serial, p.lead, p.start, p.end);
   const ph = await photoChanges(env, ref, photos, before);
   p.photos = ph.photos;
   const changes = existing ? diffFields(parse(existing.data, {}), p, parse(existing.private, {}), priv) : [];
+  if (existing && existing.ref !== ref) changes.unshift({ field: "Project code", from: existing.ref || "", to: ref });
   if (existing && !!existing.published !== !!published) changes.push({ field: "On the map", from: existing.published ? "Yes" : "No", to: published ? "Yes" : "No" });
   const t = nowIso();
   await run(env, `INSERT INTO projects(id,ref,lead,name,data,private,published,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)
@@ -511,7 +567,7 @@ async function storeSubmission(env, item, meta) {
     const cur = await one(env, "SELECT id, ref FROM projects WHERE id=?", str(item.correction.id, 100));
     if (cur) { kind = "correction"; target = cur.id; ref = cur.ref; }
   }
-  if (!ref) ref = await nextRef(env, refPrefix(p.lead, a.refPrefix));
+  if (!ref) ref = await newCode(env, p, a.refPrefix);
   if (a.leadName) p.leadName = str(a.leadName, 200);
   await run(env, `INSERT INTO submissions(id,token,kind,target_id,ref,source,batch,row_no,status,lead,name,data,private,received_at,ip)
     VALUES(?,?,?,?,?,?,?,?,'pending',?,?,?,?,?,?)`,
@@ -709,6 +765,8 @@ async function seed(env) {
     const m = String(r).match(/^(.*)-(\d+)$/);
     if (m) max[m[1]] = Math.max(max[m[1]] || 0, Number(m[2]));
   });
+  const serials = Object.values(refs).concat((data.projects || []).map((p) => p.ref)).map(serialOf).filter(Boolean);
+  if (serials.length) stmts.push(env.DB.prepare("INSERT INTO refs(prefix,last) VALUES('_serial',?) ON CONFLICT(prefix) DO UPDATE SET last=max(last,excluded.last)").bind(Math.max(...serials)));
   Object.entries(max).forEach(([k, v]) => stmts.push(env.DB.prepare("INSERT INTO refs(prefix,last) VALUES(?,?) ON CONFLICT(prefix) DO UPDATE SET last=max(last,excluded.last)").bind(k, v)));
   Object.entries(logos).forEach(([k, l]) => stmts.push(env.DB.prepare("INSERT OR IGNORE INTO logos(acronym,name,full,mark,updated_at) VALUES(?,?,?,?,?)").bind(k, l.name || k, l.full, l.mark, t)));
   if (stmts.length) await env.DB.batch(stmts);
@@ -796,7 +854,7 @@ async function adminApi(req, env, ctx, url) {
     if (m[2] === "reject") {
       await run(env, "UPDATE submissions SET status='rejected', reviewed_at=?, note=? WHERE id=?", nowIso(), text(body.note, 2000), s.id);
       await run(env, "DELETE FROM files WHERE owner=?", s.id);
-      await addLog(env, "not published", `${s.ref}: ${s.name}${s.submitted_by ? ` (sent by ${await nameOf(env, s.submitted_by) || s.submitted_by})` : ""}${body.note ? `. Note: ${text(body.note, 300)}` : ""}`, null, by, s.target_id);
+      await addLog(env, "not published", `${s.ref}: ${s.name}. Sent ${s.submitted_by ? `by ${await nameOf(env, s.submitted_by) || s.submitted_by}` : s.source === "excel" ? "from an Excel upload" : "from the form"} on ${khartoumTime(s.received_at)}${body.note ? `. Note: ${text(body.note, 300)}` : ""}`, null, by, s.target_id);
       return json({ ok: true });
     }
     if (m[2] === "reopen") {
@@ -817,9 +875,10 @@ async function adminApi(req, env, ctx, url) {
       photos, logo: logoFile, logoName: data.leadName ? String(data.leadName).replace(/^[^,]*,\s*/, "") : null,
       message: `${cur ? "Update" : "Publish"} ${cur?.ref || s.ref}: ${str(data.name, 80)}`,
     });
-    await run(env, "UPDATE submissions SET status='published', reviewed_at=?, data=?, note=? WHERE id=?", nowIso(), JSON.stringify(r.project), text(body.note, 2000), s.id);
+    await run(env, "UPDATE submissions SET status='published', reviewed_at=?, data=?, note=?, ref=? WHERE id=?", nowIso(), JSON.stringify(r.project), text(body.note, 2000), r.ref, s.id);
     await run(env, "DELETE FROM files WHERE owner=?", s.id);
-    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}${s.submitted_by ? ` (sent by ${await nameOf(env, s.submitted_by) || s.submitted_by})` : s.source === "excel" ? " (from an Excel upload)" : " (from the form)"}`, r.sha, by, r.id, r.changes);
+    const sentWhen = khartoumTime(s.received_at);
+    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}. Sent ${s.submitted_by ? `by ${await nameOf(env, s.submitted_by) || s.submitted_by}` : s.source === "excel" ? "from an Excel upload" : "from the form"} on ${sentWhen}, approved by ${who.name || by}`, r.sha, by, r.id, r.changes);
     return json({ ok: true, ref: r.ref, id: r.id, commit: r.sha });
   }
 
@@ -996,7 +1055,7 @@ async function agencyApi(req, env, ctx, url, path, who, fileUrl) {
       if (prev) {
         await run(env, "UPDATE submissions SET data=?, private=?, name=?, received_at=? WHERE id=?", JSON.stringify(p), JSON.stringify(priv), p.name, nowIso(), sid);
       } else {
-        const ref = r ? r.ref : await nextRef(env, refPrefix(agency));
+        const ref = r ? r.ref : await newCode(env, p);
         await run(env, `INSERT INTO submissions(id,token,kind,target_id,ref,source,status,lead,name,data,private,received_at,submitted_by)
           VALUES(?,?,?,?,?,'agency','pending',?,?,?,?,?,?)`, sid, uid(), r ? "correction" : "new", r ? r.id : null, ref, p.lead, p.name, JSON.stringify(p), JSON.stringify(priv), nowIso(), by);
       }

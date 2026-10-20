@@ -67,7 +67,7 @@ assets/js/multi.js      Logic of the upload page
 data/logos.json         Agency logos shown on the map (written by the admin pages)
 worker/                 Back end on Cloudflare: review queue, admin pages, publishing (see below)
 data/projects.json      The published project data (public fields only)
-data/project-refs.json  Permanent internal project numbers (for example IOM-001)
+data/project-refs.json  Permanent internal project codes (for example SD-001-IOM-26-32)
 data/organisations.json Organisation list used by the form and the template
 data/localities.json    Localities (OCHA admin 2) grouped by state
 data/geo.json           Pre-drawn boundaries for the map (states, Abyei, neighbouring countries)
@@ -106,7 +106,7 @@ The template has 15 ready rows, no example row, and hidden Lists and Localities 
 
 ### Internal project numbers
 
-Each project gets a permanent number: the lead agency's acronym and a running number (IOM-001, IOM-002, UNDP-001). Numbers are stored in `data/project-refs.json`, never change and are never reused. They are not shown on the site; they appear only when someone suggests a correction (on the form and in the email subject), so DSU knows which project it is about.
+Each project gets an internal code: country, a running number, the lead agency, the start year and the end year (SD-001-IOM-26-32). The number never changes and is never reused; the agency and the years follow the project's lead and dates, so the code changes when they do. Codes are stored in `data/project-refs.json`. They are not shown on the site; they appear only when someone suggests a correction (on the form and in the email subject), so DSU knows which project it is about.
 
 ### Add photos to a project
 

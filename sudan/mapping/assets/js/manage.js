@@ -485,7 +485,7 @@
               <div style="padding:14px" id="pv-card"></div>
               <div style="padding:0 18px 16px"><button type="button" class="linkish" id="pv-open">Open the full pop-up</button></div>
             </section>
-            ${isNew ? "" : `<section class="card ed"><h2>Project number</h2><p style="margin:0;font-size:14px">${esc(item.ref || "")}. Numbers never change and are never reused.</p></section>`}
+            ${isNew ? "" : `<section class="card ed"><h2>Project code</h2><p style="margin:0;font-size:14px"><b>${esc(item.ref || "")}</b><br>Country, number, lead agency, start year and end year. The number never changes and is never reused; the agency and years update when the lead or dates change.</p></section>`}
           </aside>
         </div>
         <div class="card bar-actions">
@@ -558,7 +558,7 @@
 
     /* ---------- history: the change log ---------- */
     const ACTIONS = { published: "Published", updated: "Published changes", added: "Added", edited: "Edited", hidden: "Hidden from the map", deleted: "Deleted",
-      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed" };
+      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed", "code changed": "Code changed", codes: "Project codes" };
     const actionText = (a) => ACTIONS[a] || (a ? a[0].toUpperCase() + a.slice(1) : "");
     function changesHTML(changes) {
       if (!changes || !changes.length) return "";
@@ -568,16 +568,16 @@
     function logRows(items, repo) {
       return items.map((i) => `<tr data-q="${esc(`${i.at} ${i.action} ${i.detail} ${i.by_name} ${i.by_email} ${(i.changes || []).map((c) => c.field).join(" ")}`.toLowerCase())}">
         <td style="white-space:nowrap">${fmtWhen(i.at)}</td>
-        <td>${esc(i.by_name || i.by_email || "")}${i.by_name && i.by_email ? `<br><span class="muted" style="font-size:12px">${esc(i.by_email)}</span>` : ""}</td>
+        <td>${i.by_name || i.by_email ? esc(i.by_name || i.by_email) : '<span class="muted">Automatic</span>'}${i.by_name && i.by_email ? `<br><span class="muted" style="font-size:12px">${esc(i.by_email)}</span>` : ""}</td>
         <td>${esc(actionText(i.action))}</td>
         <td>${esc(i.detail || "")}${changesHTML(i.changes)}</td>
-        <td>${i.commit_sha ? `<a href="https://github.com/${esc(repo)}/commit/${esc(i.commit_sha)}" target="_blank" rel="noopener">${esc(i.commit_sha.slice(0, 7))}</a>` : ""}</td></tr>`).join("");
+        <td class="gh">${i.commit_sha ? `<a href="https://github.com/${esc(repo)}/commit/${esc(i.commit_sha)}" target="_blank" rel="noopener">${esc(i.commit_sha.slice(0, 7))}</a>` : ""}</td></tr>`).join("");
     }
     function logCsv(items) {
       const q = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
       const rows = [["When (UTC)", "Name", "Email", "What", "Details", "Field", "Before", "After", "GitHub commit"]];
       items.forEach((i) => {
-        const base = [i.at, i.by_name, i.by_email, actionText(i.action), i.detail];
+        const base = [i.at, i.by_name || (i.by_email ? "" : "Automatic"), i.by_email, actionText(i.action), i.detail];
         if (i.changes && i.changes.length) i.changes.forEach((c) => rows.push([...base, c.field, c.from, c.to, i.commit_sha || ""]));
         else rows.push([...base, "", "", "", i.commit_sha || ""]);
       });
@@ -585,6 +585,15 @@
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob); a.download = `solutions-footprint-change-log-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    // The GitHub column stays closed until someone opens it
+    const ghToggle = () => `<button type="button" class="linkish gh-toggle" aria-expanded="false" style="font-size:13px;margin-left:12px">Show GitHub commits</button>`;
+    function bindGhToggle(root) {
+      root.querySelectorAll(".gh-toggle").forEach((b) => b.addEventListener("click", () => {
+        const t = b.closest(".tbl-card, #p-log").querySelector("table.log-t");
+        const open = t.classList.toggle("hide-gh") === false;
+        b.textContent = open ? "Hide GitHub commits" : "Show GitHub commits"; b.setAttribute("aria-expanded", String(open));
+      }));
     }
     async function viewHistory() {
       const { items, repo } = await api("/log?limit=5000");
@@ -594,11 +603,12 @@
           <button type="button" class="btn" id="b-csv">Download the log (Excel CSV)</button>
         </div>
         <div class="card tbl-card">
-          <div class="tbl-tools"><span class="muted" style="font-size:14px">${items.length} entr${items.length === 1 ? "y" : "ies"}</span><span class="grow"></span>
+          <div class="tbl-tools"><span class="muted" style="font-size:14px">${items.length} entr${items.length === 1 ? "y" : "ies"}</span>${ghToggle()}<span class="grow"></span>
             <label class="row" style="gap:8px;font-size:14px;color:var(--muted)">Search <input class="input" type="search" id="q" placeholder="Name, project, number or field" style="width:260px"></label></div>
-          <div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th>GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div>
+          <div class="tbl-wrap">${items.length ? `<table class="adm log-t hide-gh"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th class="gh">GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div>
         </div>`;
       document.getElementById("b-csv").addEventListener("click", () => logCsv(items));
+      bindGhToggle(app);
       const q = document.getElementById("q");
       q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
     }
@@ -607,8 +617,9 @@
       if (!host) return;
       try {
         const { items, repo } = await api(`/log?project=${encodeURIComponent(id)}&limit=200`);
-        host.innerHTML = items.length ? `<table class="adm"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th>GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>`
+        host.innerHTML = items.length ? `<div class="tbl-tools" style="border-top:0">${ghToggle()}</div><table class="adm log-t hide-gh"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th><th class="gh">GitHub</th></tr></thead><tbody>${logRows(items, repo)}</tbody></table>`
           : `<div class="empty">No changes recorded yet. Changes made from now on are listed here.</div>`;
+        bindGhToggle(host);
       } catch (e) { host.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
     }
 

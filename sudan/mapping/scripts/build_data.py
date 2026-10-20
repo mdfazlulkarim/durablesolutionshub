@@ -7,9 +7,9 @@ Usage:
 Later files win when the same project (same agency and name) appears twice,
 but empty cells never overwrite filled ones.
 
-Each project gets a permanent internal number (agency acronym and a running number,
-for example IOM-001), kept in data/project-refs.json so numbers never change or get reused.
-Photos are picked up from assets/photos/<number>-1.jpg (or .png), up to 3 per project.
+Each project gets a permanent internal code (country, running number, lead agency, start and end year,
+for example SD-001-IOM-26-32), kept in data/project-refs.json so numbers never change or get reused.
+Photos are picked up from assets/photos/SD-<number>-1.jpg (or .png), up to 3 per project.
 
 Only public fields are written. Focal point names and email addresses are
 never copied to the public data. Keep the raw exports in data/source/, which
@@ -478,19 +478,20 @@ def build_from_template(r):
 
 
 def assign_refs(projects):
-    """Permanent internal numbers: agency acronym plus a running number per agency."""
+    """Permanent internal codes: country, running number, lead agency, start year, end year (SD-001-IOM-26-32).
+    The number never changes or gets reused; the agency and years follow the project's current details."""
     reg = json.loads(REFS.read_text(encoding="utf-8")) if REFS.exists() else {}
-    used = {}
-    for ref in reg.values():
-        pre, num = ref.rsplit("-", 1)
-        used[pre] = max(used.get(pre, 0), int(num))
-    for p in sorted(projects, key=lambda x: (x["lead"] or "", x["start"] or "9999", x["name"])):
-        if p["id"] not in reg:
-            pre = re.sub(r"[^A-Z0-9]", "", (p["lead"] or "ORG").upper()) or "ORG"
-            used[pre] = used.get(pre, 0) + 1
-            reg[p["id"]] = f"{pre}-{used[pre]:03d}"
-        p["ref"] = reg[p["id"]]
-        photos = sorted(f for f in PHOTOS.glob(f"{p['ref']}-*") if f.suffix.lower() in (".jpg", ".jpeg", ".png")) if PHOTOS.exists() else []
+    serial = {pid: int(m.group(1)) for pid, ref in reg.items() if (m := re.match(r"^[A-Z]{2}-(\d{3,})-", ref))}
+    top = max(serial.values(), default=0)
+    yy = lambda d: str(d)[2:4] if d and re.match(r"^\d{4}", str(d)) else "00"
+    for p in sorted(projects, key=lambda x: (x["start"] or "9999", x["lead"] or "", x["name"])):
+        if p["id"] not in serial:
+            top += 1
+            serial[p["id"]] = top
+        pre = re.sub(r"[^A-Z0-9]", "", (p["lead"] or "ORG").upper()) or "ORG"
+        reg[p["id"]] = p["ref"] = f"SD-{serial[p['id']]:03d}-{pre}-{yy(p['start'])}-{yy(p['end'])}"
+        base = f"SD-{serial[p['id']]:03d}"
+        photos = sorted(f for f in PHOTOS.glob(f"{base}-*") if f.suffix.lower() in (".jpg", ".jpeg", ".png") and re.match(rf"^{base}-(\d|.*-\d)\.", f.name)) if PHOTOS.exists() else []
         p["photos"] = [f"assets/photos/{f.name}" for f in photos[:3]]
     REFS.write_text(json.dumps(reg, indent=1, sort_keys=True), encoding="utf-8")
 
