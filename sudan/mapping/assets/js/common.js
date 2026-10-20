@@ -16,7 +16,7 @@ SF.config = {
   // Back end that receives projects directly (no email needed). Leave empty to use email only.
   apiUrl: "",
   // Back end used for signing in (DSU admins now, agency editors later). Leave empty to hide the Sign in button.
-  authUrl: "",
+  authUrl: "https://solutions-footprint.ds-sudan.workers.dev",
   // Optional spam protection (Cloudflare Turnstile site key). Leave empty if not used.
   turnstileSiteKey: "",
   githubUrl: "https://github.com/mdfazlulkarim",
