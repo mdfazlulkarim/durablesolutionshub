@@ -15,11 +15,13 @@ database_name = "solutions-footprint"
 database_id = "d56e51cd-224d-4a57-be0e-1b8c50f38c4f"
 
 [vars]
-GITHUB_REPO = "mdfazlulkarim/durable-solutions-sudan"
+GITHUB_REPO = "mdfazlulkarim/durablesolutionshub"
 GITHUB_BRANCH = "main"
 INBOX_REPO = "mdfazlulkarim/durable-solutions-sudan-inbox"
-SITE_URL = "https://mdfazlulkarim.github.io/durable-solutions-sudan/"
-ALLOWED_ORIGINS = "https://mdfazlulkarim.github.io"
+SITE_URL = "https://durablesolutionshub.org/sudan/mapping/"
+# folder of the Sudan map inside the repository
+SITE_DIR = "sudan/mapping/"
+ALLOWED_ORIGINS = "https://durablesolutionshub.org,https://www.durablesolutionshub.org,https://mdfazlulkarim.github.io"
 COMMIT_NAME = "Md Fazlul Karim"
 COMMIT_EMAIL = "fozlulkarim@gmail.com"
 GITHUB_API = "https://api.github.com"

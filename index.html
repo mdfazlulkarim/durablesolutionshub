@@ -3,154 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Solutions Footprint | Durable Solutions Hub | Sudan</title>
-  <meta name="description" content="A public map of projects that contribute to durable solutions in Sudan, against the eight IASC criteria, reported to the Durable Solutions Working Group.">
-  <script>try{var t=localStorage.getItem("sf-theme")}catch(e){}document.documentElement.dataset.theme=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <title>Durable Solutions Hub</title>
+  <meta name="robots" content="noindex">
+  <script>
+    // Durable Solutions Hub: for now every address opens the Sudan mapping
+    (function () {
+      var base = /github\.io$/.test(location.hostname) ? "/durablesolutionshub" : "";
+      location.replace(base + "/sudan/mapping/" + location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url=/sudan/mapping/">
+  <style>body{font-family:Roboto,system-ui,sans-serif;margin:40px;color:#1c2230}a{color:#1d5fae}</style>
 </head>
 <body>
-  <header id="site-header"></header>
-
-  <main class="page" id="main">
-    <!-- Filters -->
-    <aside class="card filters" aria-label="Filters">
-      <div class="filters-head">
-        <h2>Filters</h2>
-        <button type="button" class="link-btn" id="clear-all">Clear all</button>
-      </div>
-      <div class="filter-block">
-        <div class="share-row"><label for="f-share">Minimum share towards DS</label><output id="f-share-out" for="f-share">0%</output></div>
-        <input type="range" id="f-share" min="0" max="100" step="5" value="0" aria-describedby="f-share-note">
-        <label class="check-line"><input type="checkbox" id="f-share-unreported" checked> Include projects that do not report a share</label>
-        <p class="group-note" id="f-share-note">DS means durable solutions. Hides projects where only a small part of the budget goes to durable solutions.</p>
-      </div>
-      <label class="field-label" for="f-search">Search</label>
-      <input class="input" id="f-search" type="search" placeholder="Project, partner or donor" autocomplete="off">
-      <div id="filter-groups"></div>
-    </aside>
-
-    <div class="content">
-      <section class="kpis" id="kpis" aria-label="Summary figures"></section>
-      <p class="note-line" id="not-exhaustive"></p>
-
-      <div class="showing-row">
-        <div class="showing" id="showing" aria-live="polite"></div>
-      </div>
-
-      <div class="map-row">
-        <div class="map-col">
-        <section class="card map-card" aria-labelledby="map-title">
-          <div class="map-toolbar">
-            <h2 id="map-title">Projects by state</h2>
-            <div class="tool">
-              <span class="toolbar-label" id="colour-label">Colour by</span>
-              <div class="seg" role="group" aria-labelledby="colour-label" id="colour-by">
-                <button type="button" data-v="projects" aria-pressed="true">Projects</button>
-                <button type="button" data-v="orgs" aria-pressed="false">Organisations</button>
-                <button type="button" data-v="funding" aria-pressed="false">DS funding</button>
-              </div>
-            </div>
-            <div class="tool">
-              <span class="toolbar-label" id="level-label">Level</span>
-              <div class="seg" role="group" aria-labelledby="level-label">
-                <button type="button" aria-pressed="true">States</button>
-                <button type="button" disabled title="Available once projects report their localities">Localities</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="nationwide-band" id="nationwide-band"></div>
-
-          <div class="map-wrap" id="map-wrap">
-            <button type="button" class="btn btn-sm map-back" id="map-back" hidden></button>
-            <svg class="map-svg" id="map" role="group" aria-label="Map of Sudan by state"></svg>
-            <div class="map-tip" id="map-tip" hidden></div>
-            <div class="map-legend" id="map-legend">
-              <div class="legend-top">
-                <span class="legend-head">Legend</span>
-                <button type="button" class="link-btn" id="legend-toggle" aria-expanded="true" aria-controls="legend-body">Hide legend</button>
-              </div>
-              <div id="legend-body">
-                <div class="legend-row">
-                  <span class="legend-title" id="legend-title">Number of projects</span>
-                  <span class="legend-bins" id="legend-bins"></span>
-                </div>
-                <div class="legend-row">
-                  <span class="legend-title">Solutions ring</span>
-                  <span class="legend-ring">
-                    <svg viewBox="-24 -24 48 48" width="34" height="34" id="ring-sample" class="ring-svg" aria-hidden="true"></svg>
-                    <span>The number in the centre is the number of projects. Segments: the 8 IASC criteria, clockwise from the top. Grey: a gap.</span>
-                  </span>
-                </div>
-                <div class="legend-row">
-                  <span class="legend-title">IASC criteria</span>
-                  <span class="crit-keys" id="crit-keys"></span>
-                </div>
-              </div>
-            </div>
-            <div class="map-disclaimer" id="map-disclaimer">The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations. Final boundary between the Republic of Sudan and the Republic of South Sudan has not yet been determined. Final status of the Abyei area is not yet determined.</div>
-          </div>
-
-        </section>
-
-        </div>
-
-        <aside class="card state-panel" id="state-panel" aria-live="polite" aria-label="Selected area"></aside>
-      </div>
-
-      <section class="card list-card" aria-labelledby="list-title">
-        <div class="list-head"><h2 id="list-title">Projects</h2><small>Ongoing projects first, ending soonest at the top. Select a project for details.</small></div>
-        <div id="proj-list"></div>
-      </section>
-
-    </div>
-
-    <section class="card time-card full-row" aria-labelledby="time-title">
-      <div class="time-head">
-        <div>
-          <h2 id="time-title">Time window</h2>
-          <p id="time-sub"></p>
-        </div>
-        <div class="time-controls" role="group" aria-label="Time window">
-          <button type="button" class="pill" data-t="now" aria-pressed="false">Active now</button>
-          <button type="button" class="pill" data-t="next6" aria-pressed="false">Next 6 months</button>
-          <button type="button" class="pill" data-t="year" aria-pressed="false" id="t-year"></button>
-          <button type="button" class="pill" data-t="all" aria-pressed="true">All years</button>
-          <label for="t-from">From</label>
-          <select id="t-from"></select>
-          <label for="t-to">to</label>
-          <select id="t-to"></select>
-          <button type="button" class="link-btn clear-link" id="t-clear" hidden>Clear all</button>
-        </div>
-      </div>
-      <svg class="time-chart" id="time-chart" role="img" aria-label="Projects active in each quarter"></svg>
-      <p class="time-note">Bars show projects active in each quarter, with the current filters. Darker bars fall inside the time window. Projects without dates are not shown.</p>
-    </section>
-
-    <section class="card agencies-card full-row" aria-labelledby="agencies-title">
-      <div class="agencies-head">
-        <div>
-          <h2 id="agencies-title">Contributing agencies</h2>
-          <p>UN agencies that have reported projects to the Durable Solutions Working Group. Select an agency to see its projects.</p>
-        </div>
-      </div>
-      <div class="logo-strip" id="logo-strip"></div>
-    </section>
-  </main>
-
-  <dialog class="modal" id="detail" aria-labelledby="detail-title"></dialog>
-  <dialog class="modal" id="agency" aria-labelledby="agency-title"></dialog>
-  <dialog class="modal modal-donors" id="donors" aria-labelledby="donors-title"></dialog>
-
-  <footer id="site-footer"></footer>
-
-  <script src="assets/js/common.js"></script>
-  <script src="assets/js/icons.js"></script>
-  <script src="assets/js/render.js"></script>
-  <script src="assets/js/app.js"></script>
+  <p>Opening the <a href="/sudan/mapping/">Solutions Footprint for Sudan</a>.</p>
 </body>
 </html>

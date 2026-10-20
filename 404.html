@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Durable Solutions Hub</title>
+  <meta name="robots" content="noindex">
+  <script>
+    // Durable Solutions Hub: for now every address opens the Sudan mapping
+    (function () {
+      var base = /github\.io$/.test(location.hostname) ? "/durablesolutionshub" : "";
+      location.replace(base + "/sudan/mapping/" + location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url=/sudan/mapping/">
+  <style>body{font-family:Roboto,system-ui,sans-serif;margin:40px;color:#1c2230}a{color:#1d5fae}</style>
+</head>
+<body>
+  <p>Opening the <a href="/sudan/mapping/">Solutions Footprint for Sudan</a>.</p>
+</body>
+</html>

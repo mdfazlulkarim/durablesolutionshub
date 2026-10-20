@@ -292,6 +292,8 @@ async function gh(env, path, opts = {}, repo = env.GITHUB_REPO) {
   if (!r.ok) { const e = new HttpError(r.status === 401 ? 500 : 502, `GitHub said ${r.status}: ${t.slice(0, 200)}`); e.gh = r.status; throw e; }
   return t ? JSON.parse(t) : null;
 }
+// Paths inside the site (data/projects.json, assets/photos/...) live under SITE_DIR in the repository
+const repoPath = (env, path) => `${env.SITE_DIR || ""}${path}`;
 async function readRepoFile(env, path) {
   if (!env.GITHUB_TOKEN) { // before the key is added, read the published copy instead
     const r = await fetch(`${env.SITE_URL}${path}`, { cf: { cacheTtl: 0 } });
@@ -299,7 +301,7 @@ async function readRepoFile(env, path) {
     if (!r.ok) throw new HttpError(502, `Could not read ${path} from the website (${r.status})`);
     return r.text();
   }
-  const r = await gh(env, `/contents/${path}?ref=${env.GITHUB_BRANCH || "main"}`, { accept: "application/vnd.github.raw", raw: true });
+  const r = await gh(env, `/contents/${repoPath(env, path)}?ref=${env.GITHUB_BRANCH || "main"}`, { accept: "application/vnd.github.raw", raw: true });
   if (r.status === 404) return null;
   if (!r.ok) throw new HttpError(502, `Could not read ${path} from GitHub (${r.status})`);
   return r.text();
@@ -314,9 +316,9 @@ async function commitFiles(env, files, message) {
     const base = await gh(env, `/git/commits/${head.object.sha}`);
     const tree = [];
     for (const f of files) {
-      if (f.remove) { tree.push({ path: f.path, mode: "100644", type: "blob", sha: null }); continue; }
+      if (f.remove) { tree.push({ path: repoPath(env, f.path), mode: "100644", type: "blob", sha: null }); continue; }
       const blob = await gh(env, "/git/blobs", { method: "POST", body: f.b64 ? { content: f.b64, encoding: "base64" } : { content: f.text, encoding: "utf-8" } });
-      tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
+      tree.push({ path: repoPath(env, f.path), mode: "100644", type: "blob", sha: blob.sha });
     }
     const t = await gh(env, "/git/trees", { method: "POST", body: { base_tree: base.tree.sha, tree } });
     const author = { name: env.COMMIT_NAME || "Solutions Footprint", email: env.COMMIT_EMAIL || "noreply@example.org", date: nowIso() };

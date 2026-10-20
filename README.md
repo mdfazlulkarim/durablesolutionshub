@@ -2,9 +2,19 @@
 
 A public dashboard of projects that contribute to durable solutions in Sudan, mapped against the eight IASC criteria. Built for the Durable Solutions Working Group (DSWG), with the Durable Solutions Unit (DSU), RCO Sudan, as product owner.
 
-This repository holds **Phase 1: the map explorer** and the **"Add your project" form**, in English.
+This repository is the Durable Solutions Hub website. It holds the Sudan **Solutions Footprint** (Phase 1: the map explorer and the "Add your project" form, in English) at `sudan/mapping/`.
 
-Live site (once GitHub Pages is on): `https://mdfazlulkarim.github.io/durable-solutions-sudan/`
+Live site: `https://durablesolutionshub.org/sudan/mapping/`
+
+```
+/                    forwards to /sudan/mapping/ (as does any unknown address, through 404.html)
+/sudan/              forwards to /sudan/mapping/
+/sudan/mapping/      the Solutions Footprint for Sudan: pages, assets, data and data scripts
+/worker/             back end on Cloudflare (review queue, admin pages, publishing)
+/CNAME               the custom domain for GitHub Pages
+```
+
+Paths below that start with `data/`, `assets/` or `scripts/` are inside `sudan/mapping/`. Run the commands from that folder.
 
 Contact: [dswg.sd@undp.org](mailto:dswg.sd@undp.org)
 
@@ -175,12 +185,14 @@ State names are matched in `NAME_FIX` at the top of `scripts/build_geo.js`.
 
 ## Publish with GitHub Pages
 
+Domain: `durablesolutionshub.org` (DNS at Cloudflare: four A records to GitHub Pages and a CNAME for www, all set to DNS only).
+
 Settings, then Pages, then "Deploy from a branch", branch `main`, folder `/ (root)`.
 
 To embed on sudan.un.org:
 
 ```html
-<iframe src="https://mdfazlulkarim.github.io/durable-solutions-sudan/" title="Solutions Footprint" style="width:100%;height:1900px;border:0" loading="lazy"></iframe>
+<iframe src="https://durablesolutionshub.org/sudan/mapping/" title="Solutions Footprint" style="width:100%;height:1900px;border:0" loading="lazy"></iframe>
 ```
 
 ## Credits
