@@ -5,16 +5,16 @@
      POST /api/submit-batch   several projects from an Excel upload
      POST /api/photos         add photos to a project that is still waiting for review
      GET  /api/status         status of submissions sent from a browser
+     POST /api/auth/start     sign in, step 1: email a 6-digit code to an approved email
+     POST /api/auth/verify    sign in, step 2: check the code and return a session key
+     GET  /api/auth/me        who is signed in
 
-   Admin (only for the Durable Solutions Unit, behind a password):
-     GET  /admin              the admin pages
-     /admin/api/...           review queue, edit, publish, all projects, organisations, history
+   Admin API, for signed-in DSU admins only (used by manage.html on the website):
+     /admin/api/...           review queue, edit, publish, all projects, organisations, history, approved editors
 
    Publishing writes data/projects.json (and photos and logos) to the public GitHub
    repository in one commit. GitHub Pages then updates the map within about two minutes.
-   Focal point names and emails stay in the database and are never published. */
-
-import ADMIN_HTML from "./admin.html";
+   Focal point names and emails, and the approved editors, stay in the database and are never published. */
 
 const STATES = [
   "Aj Jazirah", "Blue Nile", "Central Darfur", "East Darfur", "Gedaref", "Kassala",
@@ -80,7 +80,9 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS refs (prefix TEXT PRIMARY KEY, last INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS logos (acronym TEXT PRIMARY KEY, name TEXT, full TEXT, mark TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
-  `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT)`,
+  `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT, by_email TEXT)`,
+  `CREATE TABLE IF NOT EXISTS editors (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'admin', agency TEXT, added_by TEXT, added_at TEXT, last_signin TEXT)`,
+  `CREATE TABLE IF NOT EXISTS signin_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, sent_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS ratelimit (key TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)`,
 ];
 let schemaReady = false, importedReady = false;
@@ -94,6 +96,8 @@ async function ensureImported(env) {
 async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
+  // databases made before sign-in existed get the new column for who made each change
+  try { await env.DB.prepare("ALTER TABLE log ADD COLUMN by_email TEXT").run(); } catch (e) { /* already there */ }
   schemaReady = true;
 }
 const one = (env, sql, ...b) => env.DB.prepare(sql).bind(...b).first();
@@ -108,8 +112,8 @@ async function setting(env, key, make) {
   await run(env, "INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", key, value);
   return (await one(env, "SELECT value FROM settings WHERE key=?", key)).value;
 }
-async function addLog(env, action, detail, sha = null) {
-  await run(env, "INSERT INTO log(at,action,detail,commit_sha) VALUES(?,?,?,?)", nowIso(), action, detail, sha);
+async function addLog(env, action, detail, sha = null, by = null) {
+  await run(env, "INSERT INTO log(at,action,detail,commit_sha,by_email) VALUES(?,?,?,?,?)", nowIso(), action, detail, sha, by);
 }
 async function rateLimited(env, key, max, windowSec) {
   const now = Math.floor(Date.now() / 1000);
@@ -409,7 +413,7 @@ function corsHeaders(req, env) {
   const origin = req.headers.get("Origin") || "";
   const allowed = String(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
   const ok = allowed.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-  return ok ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", Vary: "Origin" } : {};
+  return ok ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization, X-SF-Admin", "Access-Control-Max-Age": "86400", Vary: "Origin" } : {};
 }
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers } });
 const clientIp = (req) => req.headers.get("CF-Connecting-IP") || "local";
@@ -480,7 +484,7 @@ async function storeSubmission(env, item, meta) {
 async function publicApi(req, env, ctx, url) {
   const ip = clientIp(req);
   const ipHash = (await sha256(`${ip}|${await setting(env, "salt", uid)}`)).slice(0, 16);
-  const adminUrl = `${url.origin}/admin`;
+  const adminUrl = `${env.SITE_URL || ""}manage.html`;
 
   if (url.pathname === "/api/submit" && req.method === "POST") {
     const body = await readJson(req);
@@ -539,18 +543,105 @@ async function publicApi(req, env, ctx, url) {
   throw new HttpError(404, "Not found.");
 }
 
-/* ---------------- admin ---------------- */
+/* ---------------- sign-in with an emailed code ---------------- */
+// Only approved emails can sign in: the owners in ADMIN_EMAILS (set in wrangler.toml) and the
+// editors that an admin adds on the "Approved editors" page. Removing someone ends their session at once.
+const SESSION_HOURS = 24;
+const CODE_MINUTES = 10;
+const normEmail = (e) => String(e || "").trim().toLowerCase().slice(0, 160);
+const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+const owners = (env) => String(env.ADMIN_EMAILS || "").split(",").map(normEmail).filter(Boolean);
+const contact = (env) => env.CONTACT_EMAIL || "dswg.sd@undp.org";
+const toB64url = (b64) => b64.replace(/[+/=]/g, (c) => ({ "+": "-", "/": "_", "=": "" })[c]);
+const fromB64url = (s) => s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4);
+
 async function sessionSecret(env) { return setting(env, "session_secret", () => uid() + uid()); }
-async function makeSession(env) {
-  const exp = Date.now() + 12 * 3600e3;
-  return `${exp}.${await hmac(await sessionSecret(env), `admin.${exp}`)}`;
+async function approved(env, email) {
+  if (!email) return null;
+  if (owners(env).includes(email)) return { email, role: "admin", owner: true };
+  const r = await one(env, "SELECT email, role, agency FROM editors WHERE email=?", email);
+  return r ? { email: r.email, role: r.role || "admin", agency: r.agency || null, owner: false } : null;
 }
-async function isAdmin(req, env) {
-  const m = (req.headers.get("Cookie") || "").match(/(?:^|;\s*)sf_admin=([^;]+)/);
-  if (!m) return false;
-  const [exp, sig] = m[1].split(".");
-  if (!exp || Number(exp) < Date.now()) return false;
-  return safeEqual(sig, await hmac(await sessionSecret(env), `admin.${exp}`));
+async function makeToken(env, email) {
+  const exp = Date.now() + SESSION_HOURS * 3600e3;
+  const body = toB64url(bytesToB64(enc.encode(JSON.stringify({ e: email, x: exp }))));
+  return { token: `${body}.${await hmac(await sessionSecret(env), `s.${body}`)}`, expires: exp };
+}
+async function signedIn(env, req) {
+  const m = (req.headers.get("Authorization") || "").match(/^Bearer\s+([\w-]+)\.([\w-]+)$/);
+  if (!m) return null;
+  if (!safeEqual(m[2], await hmac(await sessionSecret(env), `s.${m[1]}`))) return null;
+  const p = parse(new TextDecoder().decode(b64ToBytes(fromB64url(m[1]))), {});
+  if (!p.e || !(Number(p.x) > Date.now())) return null;
+  return approved(env, p.e);
+}
+async function sendMail(env, to, subject, textBody, html) {
+  if (!env.RESEND_API_KEY) throw new HttpError(503, `Sign-in emails are not set up yet. Please contact the DSWG at ${contact(env)}.`);
+  const r = await fetch(`${env.RESEND_API || "https://api.resend.com"}/emails`, {
+    method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: env.MAIL_FROM || "Durable Solutions Hub <no-reply@durablesolutionshub.org>", to: [to], subject, text: textBody, html }),
+  });
+  if (!r.ok) {
+    console.error("email not sent", r.status, (await r.text().catch(() => "")).slice(0, 300));
+    throw new HttpError(502, "The sign-in email could not be sent. Please try again in a few minutes.");
+  }
+}
+function codeEmail(code) {
+  const text = `Your sign-in code for the Durable Solutions Hub is ${code}\n\nIt works for ${CODE_MINUTES} minutes. If you did not ask for this code, you can ignore this email.\n\nDurable Solutions Hub | Sudan`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:15px;color:#1c2230;max-width:480px">
+    <p style="margin:0 0 6px;color:#1d5fae;font-size:12px;font-weight:bold;letter-spacing:.04em">DURABLE SOLUTIONS HUB | SUDAN</p>
+    <p>Your sign-in code is:</p>
+    <p style="font-size:30px;font-weight:bold;letter-spacing:8px;margin:8px 0 14px">${code}</p>
+    <p>It works for ${CODE_MINUTES} minutes. If you did not ask for this code, you can ignore this email.</p></div>`;
+  return { subject: `${code} is your Durable Solutions Hub sign-in code`, text, html };
+}
+
+async function authApi(req, env, url, ipHash) {
+  if (url.pathname === "/api/auth/start" && req.method === "POST") {
+    const body = await readJson(req, 5000);
+    const email = normEmail(body.email);
+    if (!validEmail(email)) throw new HttpError(400, "Please enter a valid email address.");
+    if (await rateLimited(env, `auth-ip:${ipHash}`, 20, 900)) throw new HttpError(429, "Too many attempts. Please wait 15 minutes and try again.");
+    if (await rateLimited(env, `auth-mail:${(await sha256(email)).slice(0, 24)}`, 5, 900)) throw new HttpError(429, "Too many codes asked for this email. Please wait 15 minutes and try again.");
+    if (!(await approved(env, email))) {
+      return json({ ok: false, code: "not_approved", error: `This email is not on the approved list. Please contact the DSWG at ${contact(env)}, or your agency focal point, to be added.` }, 403);
+    }
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+    await run(env, `INSERT INTO signin_codes(email,code_hash,expires,attempts,sent_at) VALUES(?,?,?,0,?)
+      ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires=excluded.expires, attempts=0, sent_at=excluded.sent_at`,
+      email, await sha256(`${email}|${code}|${await sessionSecret(env)}`), Date.now() + CODE_MINUTES * 60e3, Date.now());
+    const m = codeEmail(code);
+    await sendMail(env, email, m.subject, m.text, m.html);
+    return json({ ok: true, minutes: CODE_MINUTES, ...(env.DEV_SHOW_CODE === "1" ? { devCode: code } : {}) });
+  }
+  if (url.pathname === "/api/auth/verify" && req.method === "POST") {
+    const body = await readJson(req, 5000);
+    const email = normEmail(body.email), code = String(body.code || "").replace(/\D/g, "");
+    if (await rateLimited(env, `verify-ip:${ipHash}`, 40, 900)) throw new HttpError(429, "Too many attempts. Please wait 15 minutes and try again.");
+    const row = await one(env, "SELECT * FROM signin_codes WHERE email=?", email);
+    if (!row || row.expires < Date.now()) throw new HttpError(400, "This code has expired or has already been used. Please ask for a new code.");
+    if (row.attempts >= 5) {
+      await run(env, "DELETE FROM signin_codes WHERE email=?", email);
+      throw new HttpError(400, "Too many wrong codes. Please ask for a new code.");
+    }
+    if (!safeEqual(row.code_hash, await sha256(`${email}|${code}|${await sessionSecret(env)}`))) {
+      await run(env, "UPDATE signin_codes SET attempts=attempts+1 WHERE email=?", email);
+      throw new HttpError(400, "That code is not right. Please check the email and try again.");
+    }
+    await run(env, "DELETE FROM signin_codes WHERE email=?", email);
+    const who = await approved(env, email);
+    if (!who) throw new HttpError(403, `This email is not on the approved list. Please contact the DSWG at ${contact(env)}.`);
+    await run(env, "UPDATE editors SET last_signin=? WHERE email=?", nowIso(), email);
+    if (who.owner) await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", `signin:${email}`, nowIso());
+    const t = await makeToken(env, email);
+    return json({ ok: true, token: t.token, expires: t.expires, email, role: who.role, owner: who.owner });
+  }
+  if (url.pathname === "/api/auth/me" && req.method === "GET") {
+    const who = await signedIn(env, req);
+    if (!who) throw new HttpError(401, "Please sign in.");
+    return json({ ok: true, ...who });
+  }
+  return null;
 }
 
 async function seed(env) {
@@ -580,16 +671,15 @@ async function seed(env) {
   return { imported: fresh.length };
 }
 
-function fileUrl(id) { return `/admin/api/file/${id}`; }
-async function subDetail(env, s) {
+async function subDetail(env, s, fileUrl) {
   const files = await all(env, "SELECT id, kind, name, size FROM files WHERE owner=? ORDER BY created_at", s.id);
   const current = s.target_id ? await one(env, "SELECT id, ref, data FROM projects WHERE id=?", s.target_id) : null;
   return {
     id: s.id, kind: s.kind, ref: s.ref, source: s.source, row: s.row_no, status: s.status, receivedAt: s.received_at,
     reviewedAt: s.reviewed_at, note: s.note, targetId: s.target_id,
     data: parse(s.data, {}), private: parse(s.private, {}),
-    photos: files.filter((f) => f.kind === "photo").map((f) => ({ file: f.id, url: fileUrl(f.id), name: f.name, size: f.size })),
-    logo: files.filter((f) => f.kind === "logo").map((f) => ({ file: f.id, url: fileUrl(f.id), name: f.name }))[0] || null,
+    photos: await Promise.all(files.filter((f) => f.kind === "photo").map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name, size: f.size }))),
+    logo: (await Promise.all(files.filter((f) => f.kind === "logo").map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name }))))[0] || null,
     current: current ? { id: current.id, ref: current.ref, data: parse(current.data, {}) } : null,
     checks: await computeChecks(env, s),
   };
@@ -599,19 +689,23 @@ async function adminApi(req, env, ctx, url) {
   const path = url.pathname.replace(/^\/admin\/api/, "");
   const ip = clientIp(req);
 
-  if (path === "/login" && req.method === "POST") {
-    if (await rateLimited(env, `login:${await sha256(ip)}`, 10, 900)) throw new HttpError(429, "Too many attempts. Please wait 15 minutes.");
-    const body = await readJson(req, 10000);
-    if (!env.ADMIN_PASSWORD) throw new HttpError(500, "The admin password is not set up yet (ADMIN_PASSWORD).");
-    if (!safeEqual(body.password || "", env.ADMIN_PASSWORD)) throw new HttpError(401, "Wrong password.");
-    const secure = url.protocol === "https:" ? "; Secure" : "";
-    return json({ ok: true }, 200, { "Set-Cookie": `sf_admin=${await makeSession(env)}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=43200${secure}` });
+  let m;
+  // Photos waiting for review are shown with a signed link, so they also load in an <img> tag
+  if ((m = path.match(/^\/file\/([a-f0-9]+)$/)) && req.method === "GET") {
+    const k = url.searchParams.get("k") || "";
+    if (!safeEqual(k, await hmac(await sessionSecret(env), `f.${m[1]}`))) throw new HttpError(404, "File not found.");
+    const f = await one(env, "SELECT mime, data FROM files WHERE id=?", m[1]);
+    if (!f) throw new HttpError(404, "File not found.");
+    return new Response(b64ToBytes(String(f.data)), { headers: { "Content-Type": f.mime, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
   }
-  if (path === "/logout" && req.method === "POST") return json({ ok: true }, 200, { "Set-Cookie": "sf_admin=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0" });
 
-  if (!(await isAdmin(req, env))) throw new HttpError(401, "Please sign in.");
+  const who = await signedIn(env, req);
+  if (!who) throw new HttpError(401, "Please sign in.");
+  if (who.role !== "admin") throw new HttpError(403, "Only DSU admins can use these pages.");
+  const by = who.email;
   await ensureImported(env);
   if (req.method !== "GET" && req.headers.get("X-SF-Admin") !== "1") throw new HttpError(403, "Request refused.");
+  const fileUrl = async (id) => `${url.origin}/admin/api/file/${id}?k=${await hmac(await sessionSecret(env), `f.${id}`)}`;
 
   if (path === "/me") {
     const counts = {};
@@ -619,7 +713,7 @@ async function adminApi(req, env, ctx, url) {
     const proj = await one(env, "SELECT count(*) AS n, sum(published) AS pub FROM projects");
     const oldest = await one(env, "SELECT min(received_at) AS t FROM submissions WHERE status='pending'");
     return json({ ok: true, counts, projects: proj.n || 0, published: proj.pub || 0, oldestPending: oldest?.t || null, imported: !!(await setting(env, "imported")),
-      setup: { github: !!env.GITHUB_TOKEN, inbox: !!env.INBOX_REPO, turnstile: !!env.TURNSTILE_SECRET }, siteUrl: env.SITE_URL });
+      setup: { github: !!env.GITHUB_TOKEN, inbox: !!env.INBOX_REPO, turnstile: !!env.TURNSTILE_SECRET, email: !!env.RESEND_API_KEY }, siteUrl: env.SITE_URL, me: who });
   }
   if (path === "/setup" && req.method === "POST") return json({ ok: true, ...(await seed(env)) });
 
@@ -634,18 +728,17 @@ async function adminApi(req, env, ctx, url) {
     return json({ ok: true, items });
   }
 
-  let m;
   if ((m = path.match(/^\/submission\/([a-f0-9]+)$/))) {
     const s = await one(env, "SELECT * FROM submissions WHERE id=?", m[1]);
     if (!s) throw new HttpError(404, "Submission not found.");
-    if (req.method === "GET") return json({ ok: true, item: await subDetail(env, s) });
+    if (req.method === "GET") return json({ ok: true, item: await subDetail(env, s, fileUrl) });
     if (req.method === "PUT") {
       const body = await readJson(req);
       const p = cleanProject(body.data || {});
       if (body.data?.leadName) p.leadName = str(body.data.leadName, 200);
       await run(env, "UPDATE submissions SET data=?, private=?, note=?, lead=?, name=? WHERE id=?", JSON.stringify(p), JSON.stringify(body.private || {}), text(body.note, 2000), p.lead, p.name, s.id);
       await syncFiles(env, s.id, body.photos);
-      return json({ ok: true, item: await subDetail(env, await one(env, "SELECT * FROM submissions WHERE id=?", s.id)) });
+      return json({ ok: true, item: await subDetail(env, await one(env, "SELECT * FROM submissions WHERE id=?", s.id), fileUrl) });
     }
   }
   if ((m = path.match(/^\/submission\/([a-f0-9]+)\/(publish|reject|reopen)$/)) && req.method === "POST") {
@@ -655,7 +748,7 @@ async function adminApi(req, env, ctx, url) {
     if (m[2] === "reject") {
       await run(env, "UPDATE submissions SET status='rejected', reviewed_at=?, note=? WHERE id=?", nowIso(), text(body.note, 2000), s.id);
       await run(env, "DELETE FROM files WHERE owner=?", s.id);
-      await addLog(env, "not published", `${s.ref}: ${s.name}`);
+      await addLog(env, "not published", `${s.ref}: ${s.name}`, null, by);
       return json({ ok: true });
     }
     if (m[2] === "reopen") {
@@ -678,7 +771,7 @@ async function adminApi(req, env, ctx, url) {
     });
     await run(env, "UPDATE submissions SET status='published', reviewed_at=?, data=?, note=? WHERE id=?", nowIso(), JSON.stringify(r.project), text(body.note, 2000), s.id);
     await run(env, "DELETE FROM files WHERE owner=?", s.id);
-    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}`, r.sha);
+    await addLog(env, cur ? "updated" : "published", `${r.ref}: ${r.project.name}`, r.sha, by);
     return json({ ok: true, ref: r.ref, id: r.id, commit: r.sha });
   }
 
@@ -694,7 +787,7 @@ async function adminApi(req, env, ctx, url) {
       const files = await all(env, "SELECT id, name, size FROM files WHERE owner=? AND kind='photo' ORDER BY created_at", `project:${id}`);
       const data = parse(r.data, {});
       return json({ ok: true, item: { id: r.id, ref: r.ref, published: !!r.published, data, private: parse(r.private, {}), updatedAt: r.updated_at,
-        photos: [...(data.photos || []).map((p) => ({ path: p, url: `${env.SITE_URL}${p}` })), ...files.map((f) => ({ file: f.id, url: fileUrl(f.id), name: f.name }))] } });
+        photos: [...(data.photos || []).map((p) => ({ path: p, url: `${env.SITE_URL}${p}` })), ...(await Promise.all(files.map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name }))))] } });
     }
     if (req.method === "PUT") {
       const body = await readJson(req);
@@ -704,7 +797,7 @@ async function adminApi(req, env, ctx, url) {
         published: body.published === false ? 0 : 1, message: body.message || null,
       });
       await run(env, "DELETE FROM files WHERE owner=?", `project:${id}`);
-      await addLog(env, isNew ? "added" : body.published === false ? "hidden" : "edited", `${r.ref}: ${r.project.name}`, r.sha);
+      await addLog(env, isNew ? "added" : body.published === false ? "hidden" : "edited", `${r.ref}: ${r.project.name}`, r.sha, by);
       return json({ ok: true, id: r.id, ref: r.ref, commit: r.sha });
     }
     if (req.method === "DELETE") {
@@ -713,7 +806,7 @@ async function adminApi(req, env, ctx, url) {
       const photos = parse(r.data, {}).photos || [];
       await run(env, "DELETE FROM projects WHERE id=?", id);
       const sha = await commitFiles(env, [...photos.map((p) => ({ path: p, remove: true })), ...(await siteFiles(env))], `Remove ${r.ref}: ${r.name}`);
-      await addLog(env, "deleted", `${r.ref}: ${r.name}`, sha);
+      await addLog(env, "deleted", `${r.ref}: ${r.name}`, sha, by);
       return json({ ok: true, commit: sha });
     }
   }
@@ -724,14 +817,9 @@ async function adminApi(req, env, ctx, url) {
     const owner = /^(project:[\w-]+|[a-f0-9]{32})$/.test(body.owner || "") ? body.owner : null;
     if (!owner) throw new HttpError(400, "Unknown owner.");
     const id = await saveImage(env, owner, body.kind === "logo" ? "logo" : "photo", body.image);
-    return json({ ok: true, file: id, url: fileUrl(id) });
+    return json({ ok: true, file: id, url: await fileUrl(id) });
   }
-  if ((m = path.match(/^\/file\/([a-f0-9]+)$/))) {
-    if (req.method === "DELETE") { await run(env, "DELETE FROM files WHERE id=?", m[1]); return json({ ok: true }); }
-    const f = await one(env, "SELECT mime, data FROM files WHERE id=?", m[1]);
-    if (!f) throw new HttpError(404, "File not found.");
-    return new Response(b64ToBytes(String(f.data)), { headers: { "Content-Type": f.mime, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
-  }
+  if ((m = path.match(/^\/file\/([a-f0-9]+)$/)) && req.method === "DELETE") { await run(env, "DELETE FROM files WHERE id=?", m[1]); return json({ ok: true }); }
 
   if (path === "/orgs") {
     const logos = await all(env, "SELECT * FROM logos ORDER BY acronym");
@@ -745,8 +833,32 @@ async function adminApi(req, env, ctx, url) {
     const fileId = await saveImage(env, `project:logo`, "logo", body.image);
     const files = await logoChanges(env, acronym, str(body.name, 200), fileId);
     const sha = await commitFiles(env, [...files, ...(await siteFiles(env))], `Logo for ${acronym}`);
-    await addLog(env, "logo", acronym, sha);
+    await addLog(env, "logo", acronym, sha, by);
     return json({ ok: true, commit: sha });
+  }
+  // Approved editors: who can sign in. Owners (ADMIN_EMAILS) are fixed; the rest are added here.
+  if (path === "/editors" && req.method === "GET") {
+    const rows = await all(env, "SELECT email, role, agency, added_by, added_at, last_signin FROM editors ORDER BY email");
+    const own = [];
+    for (const e of owners(env)) own.push({ email: e, role: "admin", owner: true, last_signin: await setting(env, `signin:${e}`) });
+    return json({ ok: true, items: [...own, ...rows.filter((r) => !owners(env).includes(r.email)).map((r) => ({ ...r, owner: false }))], me: who.email });
+  }
+  if (path === "/editors" && req.method === "POST") {
+    const body = await readJson(req, 5000);
+    const email = normEmail(body.email);
+    if (!validEmail(email)) throw new HttpError(400, "Please enter a valid email address.");
+    if (owners(env).includes(email) || (await one(env, "SELECT email FROM editors WHERE email=?", email))) throw new HttpError(409, "This email is already on the list.");
+    await run(env, "INSERT INTO editors(email,role,agency,added_by,added_at) VALUES(?,?,?,?,?)", email, "admin", str(body.agency, 80) || null, by, nowIso());
+    await addLog(env, "editor added", `${email} (DSU admin)`, null, by);
+    return json({ ok: true });
+  }
+  if ((m = path.match(/^\/editors\/(.+)$/)) && req.method === "DELETE") {
+    const email = normEmail(decodeURIComponent(m[1]));
+    if (owners(env).includes(email)) throw new HttpError(400, "This email is set as an owner and cannot be removed here.");
+    await run(env, "DELETE FROM editors WHERE email=?", email);
+    await run(env, "DELETE FROM signin_codes WHERE email=?", email);
+    await addLog(env, "editor removed", email, null, by);
+    return json({ ok: true });
   }
   if (path === "/log") return json({ ok: true, items: await all(env, "SELECT * FROM log ORDER BY id DESC LIMIT 200"), repo: env.GITHUB_REPO });
   if (path === "/export") {
@@ -771,24 +883,27 @@ async function syncFiles(env, owner, photos) {
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
-    const cors = url.pathname.startsWith("/api/") ? corsHeaders(req, env) : {};
+    const cors = url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin/api/") ? corsHeaders(req, env) : {};
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
-      if (url.pathname === "/" || url.pathname === "") return Response.redirect(`${url.origin}/admin`, 302);
-      if (url.pathname === "/admin" || url.pathname === "/admin/") {
-        return new Response(ADMIN_HTML.replaceAll("{{SITE_URL}}", env.SITE_URL || ""), {
-          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin" },
-        });
+      // The admin pages are part of the website now (manage.html); old links are sent there
+      if (url.pathname === "/" || url.pathname === "" || url.pathname === "/admin" || url.pathname === "/admin/") {
+        return Response.redirect(`${env.SITE_URL || ""}manage.html${url.hash || ""}`, 302);
       }
       await ensureSchema(env);
-      if (url.pathname.startsWith("/api/")) {
+      let r;
+      if (url.pathname.startsWith("/api/auth/")) {
+        const ipHash = (await sha256(`${clientIp(req)}|${await setting(env, "salt", uid)}`)).slice(0, 16);
+        r = await authApi(req, env, url, ipHash);
+        if (!r) throw new HttpError(404, "Not found.");
+      } else if (url.pathname.startsWith("/api/")) {
         if (req.method === "POST") await ensureImported(env);
-        const r = await publicApi(req, env, ctx, url);
-        Object.entries(cors).forEach(([k, v]) => r.headers.set(k, v));
-        return r;
-      }
-      if (url.pathname.startsWith("/admin/api/")) return await adminApi(req, env, ctx, url);
-      return new Response("Not found", { status: 404 });
+        r = await publicApi(req, env, ctx, url);
+      } else if (url.pathname.startsWith("/admin/api/")) {
+        r = await adminApi(req, env, ctx, url);
+      } else return new Response("Not found", { status: 404 });
+      Object.entries(cors).forEach(([k, v]) => r.headers.set(k, v));
+      return r;
     } catch (e) {
       const status = e.status || 500;
       if (status === 500) console.error(e);

@@ -1,7 +1,7 @@
 # Solutions Footprint back end (Cloudflare Worker)
 # Secrets are NOT kept here. Add them in Cloudflare: Worker > Settings > Variables and Secrets:
-#   GITHUB_TOKEN      fine-grained GitHub key (Contents and Issues: read and write)
-#   ADMIN_PASSWORD    password for the admin pages
+#   GITHUB_TOKEN      fine-grained GitHub key (Contents: read and write; Issues too if INBOX_REPO is used)
+#   RESEND_API_KEY    Resend key, used to email the 6-digit sign-in codes
 #   TURNSTILE_SECRET  optional, Turnstile secret key (spam protection on the form)
 
 name = "solutions-footprint"
@@ -25,3 +25,7 @@ ALLOWED_ORIGINS = "https://durablesolutionshub.org,https://www.durablesolutionsh
 COMMIT_NAME = "Md Fazlul Karim"
 COMMIT_EMAIL = "fozlulkarim@gmail.com"
 GITHUB_API = "https://api.github.com"
+# People who can always sign in as DSU admin (comma separated). Others are added on the Approved editors page.
+ADMIN_EMAILS = "md.karim@un.org"
+MAIL_FROM = "Durable Solutions Hub <no-reply@durablesolutionshub.org>"
+CONTACT_EMAIL = "dswg.sd@undp.org"

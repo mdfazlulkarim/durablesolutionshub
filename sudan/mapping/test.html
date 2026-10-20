@@ -16,7 +16,7 @@
   <header id="site-header"></header>
   <main class="test-page">
     <h1>Test mode</h1>
-    <p class="lede" style="margin:0">For the Durable Solutions Unit. Test mode makes this browser send projects straight to the new review queue. Everyone else keeps sending by email, and nothing changes on the map until you publish from the admin pages.</p>
+    <p class="lede" style="margin:0">For the Durable Solutions Unit. Test mode shows the Sign in button and makes this browser send projects straight to the new review queue. Everyone else sees the hub as it is, and nothing changes on the map until you publish from the Manage pages.</p>
 
     <section class="card">
       <p style="margin:0 0 12px">Test mode is <span class="test-state" id="state"></span> in this browser.</p>
@@ -33,7 +33,7 @@
         <li><a href="add.html">Add one project</a>: fill in the form, add a photo, press Send.</li>
         <li><a href="add-multiple.html">Add multiple projects</a>: upload a filled copy of the Excel template.</li>
         <li><a href="my-submissions.html">My submissions</a>: check the status and the Add photos button.</li>
-        <li><a id="admin-link" href="#" target="_blank" rel="noopener">Admin pages</a>: sign in, review the test projects. Use <b>Do not publish</b> for test projects, so they do not appear on the map.</li>
+        <li><b>Sign in</b> (top right): type your work email, then the 6-digit code from the email. Your initials then open <a href="manage.html">Manage all projects</a>, the review queue and the approved editors. Use <b>Do not publish</b> for test projects, so they do not appear on the map.</li>
       </ol>
     </section>
     <p style="font-size:14px;color:var(--ink-2);margin:0">When everything works, the form is switched on for everyone by setting the back end address in the site settings.</p>
@@ -46,7 +46,6 @@
       const $ = (id) => document.getElementById(id);
       const on = (() => { try { return localStorage.getItem("sf-test-mode") === "on"; } catch (e) { return false; } })();
       $("state").textContent = on ? "on" : "off";
-      $("admin-link").href = SF.TEST_API + "/admin";
       $("on").addEventListener("click", () => { try { localStorage.setItem("sf-test-mode", "on"); location.reload(); } catch (e) { alert("This browser does not allow saving settings, so test mode cannot be turned on."); } });
       $("off").addEventListener("click", () => { try { localStorage.removeItem("sf-test-mode"); } catch (e) {} location.reload(); });
       SF.renderHeader("");

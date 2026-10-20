@@ -120,15 +120,17 @@ Save the logo as `assets/img/logos/<ACRONYM>.png` (full logo, about 96 px high) 
 
 Edit `scripts/organisations_source.py`, then run it, and run `python3 scripts/build_template.py` so the template lists match.
 
-### Review and publish (admin pages)
+### Sign in and manage projects
 
-Once the back end is on, the admin pages replace the SharePoint list as the place where the data is kept:
-`https://solutions-footprint.<subdomain>.workers.dev/admin`
+The **Sign in** button (top right of every page) asks for a work email and sends a 6-digit code to it. Only approved emails get a code: the owners in `ADMIN_EMAILS` in `worker/wrangler.toml`, and the people added on the **Approved editors** page. Anyone else is asked to contact the DSWG or their agency focal point. A sign-in lasts 24 hours in that browser, or until Sign out.
+
+Signed-in DSU admins open `manage.html` from the menu under their initials. These pages replace the SharePoint list as the place where the data is kept:
 
 - **Review queue:** new projects from the form and the Excel page, with checks (possible duplicate, organisation without a logo, empty fields). Open one, edit any field, then **Publish to the map**, **Do not publish**, or **Reply to the submitter** (opens your email).
 - **All projects:** every project, including private fields (focal point name and email). Edit and **Save and publish**, hide from the map, or delete. **Download a backup** saves everything as JSON.
 - **Organisations:** logos of lead organisations; a new logo is published straight away.
-- **History:** every change, each linked to its commit on GitHub, so any change can be undone there.
+- **Approved editors:** who can sign in. Add or remove DSU admins; removing someone signs them out at once.
+- **History:** every change, who made it, and its commit on GitHub, so any change can be undone there.
 
 Publishing writes `data/projects.json`, `data/project-refs.json`, `data/logos.json` and any photos or logos to this repository in one commit. GitHub Pages updates the map within about two minutes. Focal point names and emails stay in the database and are never published. Project numbers are given by the back end when a project is received and never change or get reused.
 
@@ -141,11 +143,13 @@ The first time the back end is used it copies the projects already on the map in
 The back end is a Cloudflare Worker (free plan) with a Cloudflare D1 database. Its code is in `worker/`; the settings are in `worker/wrangler.toml`.
 
 1. In Cloudflare, create a D1 database called `solutions-footprint` and put its ID in `worker/wrangler.toml` (already done).
-2. On GitHub, create a private repository `durable-solutions-sudan-inbox` and click Watch, All activity. Each new submission opens an issue there, and GitHub emails you.
-3. Create a fine-grained GitHub key with access to `durable-solutions-sudan` and `durable-solutions-sudan-inbox`, with Contents and Issues set to Read and write.
-4. In Cloudflare, Workers & Pages, Create application, Import a repository: choose `durable-solutions-sudan`, set the root directory (path) to `worker`, keep the name `solutions-footprint`, and deploy.
-5. In the Worker, Settings, Variables and Secrets, add two secrets: `GITHUB_TOKEN` (the key) and `ADMIN_PASSWORD`. Optional: `TURNSTILE_SECRET` for spam protection, with the matching site key in `SF.config.turnstileSiteKey`.
-6. Put the Worker address in `SF.config.apiUrl` in `assets/js/common.js` (for example `https://solutions-footprint.ds-sudan.workers.dev`) and commit. The form now sends projects directly.
+2. Optional, for alerts on new submissions: on GitHub, create a private repository `durable-solutions-sudan-inbox` and click Watch, All activity. Each new submission opens an issue there, and GitHub emails you. Without it, check the review queue.
+3. Create a fine-grained GitHub key with access to `durablesolutionshub` (and the inbox repository, if used), with Contents (and Issues) set to Read and write.
+4. In Cloudflare, Workers & Pages, Create application, Import a repository: choose `durablesolutionshub`, set the root directory (path) to `worker`, keep the name `solutions-footprint`, and deploy.
+5. On resend.com, add the domain `durablesolutionshub.org` and add its DNS records in Cloudflare, then create an API key with "Sending access".
+6. In the Worker, Settings, Variables and Secrets, add two secrets: `GITHUB_TOKEN` (the key) and `RESEND_API_KEY`. Optional: `TURNSTILE_SECRET` for spam protection, with the matching site key in `SF.config.turnstileSiteKey`.
+7. Test from `test.html` (test mode shows the Sign in button in that browser only).
+8. To switch on Sign in for everyone, put the Worker address in `SF.config.authUrl` in `assets/js/common.js` (for example `https://solutions-footprint.ds-sudan.workers.dev`). To also make the form send projects directly, put the same address in `SF.config.apiUrl`.
 
 Secrets are never kept in this repository. To test the Worker on a computer, put them in `worker/.dev.vars` (excluded from the repository) and run `npx wrangler dev` in `worker/`.
 

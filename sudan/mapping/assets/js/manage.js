@@ -1,137 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Admin | Solutions Footprint</title>
-  <script>try{var t=localStorage.getItem("sf-theme")}catch(e){}document.documentElement.dataset.theme=t||"light";</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{SITE_URL}}assets/css/style.css">
-  <link rel="icon" href="{{SITE_URL}}assets/img/favicon.svg" type="image/svg+xml">
-  <style>
-    body { background: var(--bg); }
-    .adm-head { background: #1c2230; color: #fff; }
-    .adm-head .in { max-width: 1180px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-    .adm-head .ttl { display: flex; flex-direction: column; flex: 1 1 auto; }
-    .adm-head .ttl small { font-size: 12px; color: #c3c9d3; }
-    .adm-head .ttl b { font-size: 18px; }
-    .adm-nav { display: flex; flex-wrap: wrap; gap: 4px; }
-    .adm-nav a { color: #c3c9d3; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
-    .adm-nav a[aria-current="page"] { background: var(--brand); color: #fff; }
-    .adm-nav a:hover { color: #fff; }
-    .adm-who { font-size: 13px; color: #c3c9d3; }
-    .adm-who button { background: none; border: 0; color: #fff; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
-    .adm-main { max-width: 1180px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; min-height: 70vh; }
-    .adm-main h1 { margin: 0; font-size: 26px; }
-    .lede2 { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
-    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .row.between { justify-content: space-between; align-items: flex-end; }
-    .grow { flex: 1 1 auto; }
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-    .stat { padding: 16px; }
-    .stat .l { font-size: 13px; color: var(--muted); }
-    .stat .v { font-size: 28px; font-weight: 700; margin-top: 4px; }
-    .stat .v.warn { color: var(--warn-ink); }
-    .tbl-card { overflow: hidden; }
-    .tbl-tools { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); }
-    .tab { font: inherit; font-size: 14px; padding: 8px 12px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; text-decoration: none; }
-    .tab[aria-current="true"] { background: var(--brand-tint); color: var(--brand); font-weight: 500; }
-    .tbl-wrap { overflow-x: auto; }
-    table.adm { width: 100%; border-collapse: collapse; font-size: 14px; }
-    table.adm th { background: var(--panel-2); text-align: left; color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 12px; white-space: nowrap; }
-    table.adm td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
-    table.adm th:first-child, table.adm td:first-child { padding-left: 18px; }
-    table.adm tr.click { cursor: pointer; }
-    table.adm tr.click:hover td { background: var(--brand-tint-2); }
-    .ref { font-weight: 500; white-space: nowrap; }
-    .pill2 { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
-    .pill2.ok { background: #e6f4ec; color: #1a7a4c; }
-    .pill2.warn { background: var(--warn-bg); color: var(--warn-ink); }
-    .pill2.err { background: var(--err-bg); color: var(--err); }
-    .pill2.info { background: var(--brand-tint); color: var(--brand); }
-    .pill2.mute { background: var(--track); color: var(--muted); }
-    :root[data-theme="dark"] .pill2.ok { background: #183b2a; color: #7fd6a6; }
-    .note-box { border-radius: 10px; padding: 14px 16px; font-size: 14px; line-height: 1.5; background: var(--brand-tint); color: var(--brand-dark); }
-    :root[data-theme="dark"] .note-box { color: var(--ink); }
-    .note-box.warn { background: var(--warn-bg); color: var(--warn-ink); }
-    .split { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
-    .split > .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-    .split > .side { flex: 1 1 330px; min-width: 0; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 12px; }
-    .ed { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-    .ed h2 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-    .ed h2 small { font-size: 13px; color: var(--muted); font-weight: 400; }
-    .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .g6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
-    @media (max-width: 700px) { .g2, .g3 { grid-template-columns: 1fr; } .g6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    .f { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; min-width: 0; }
-    .f .input { font-weight: 400; }
-    .f small { font-weight: 400; color: var(--muted); font-size: 12px; }
-    .f.changed .input, .f.changed .choice-pills { box-shadow: 0 0 0 2px var(--warn-ink); border-radius: 8px; }
-    .was { font-weight: 400; font-size: 12px; color: var(--warn-ink); }
-    .choice-pills.sm label { padding: 5px 11px; font-size: 13px; }
-    .crit-opt2 .ci { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
-    .crit-opt2 .ci svg { width: 14px; height: 14px; }
-    .ph-list { display: flex; flex-wrap: wrap; gap: 10px; }
-    .ph { width: 150px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12px; background: var(--panel); }
-    .ph img { width: 100%; height: 96px; object-fit: cover; display: block; background: var(--map-water); }
-    .ph div { padding: 6px 8px; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
-    .ph button { background: none; border: 0; color: var(--err); cursor: pointer; font: inherit; font-size: 12px; padding: 0; }
-    .ph-add { width: 150px; min-height: 126px; border: 2px dashed var(--brand-line); background: var(--brand-tint-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--brand); font-size: 13px; cursor: pointer; padding: 8px; }
-    .ph-add input { display: none; }
-    .checks { display: flex; flex-direction: column; gap: 10px; }
-    .chk { display: flex; gap: 10px; font-size: 14px; line-height: 1.45; }
-    .chk svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
-    .chk.warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 10px 12px; }
-    .chk.error { background: var(--err-bg); color: var(--err); border-radius: 8px; padding: 10px 12px; }
-    .chk a, .chk button.linkish { color: inherit; }
-    button.linkish { background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; cursor: pointer; color: var(--brand); }
-    .bar-actions { padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: sticky; bottom: 10px; z-index: 5; }
-    .btn-danger { border-color: var(--err-line); background: var(--err-bg); color: var(--err); }
-    .btn[disabled] { opacity: .6; cursor: progress; }
-    .login { max-width: 420px; margin: 8vh auto; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
-    .login h1 { font-size: 22px; margin: 0; }
-    .err-line { color: var(--err); font-size: 14px; min-height: 20px; }
-    .diff { font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
-    .diff b { font-weight: 500; }
-    .logo-cell img { max-height: 28px; max-width: 110px; display: block; }
-    .muted { color: var(--muted); }
-    .empty { padding: 28px; text-align: center; color: var(--muted); }
-    .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; }
-    @keyframes sp { to { transform: rotate(360deg); } }
-    .cmp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
-    .cmp > div { border-right: 1px solid var(--line); }
-    @media (max-width: 760px) { .cmp { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <header class="adm-head">
-    <div class="in">
-      <div class="ttl"><small>Solutions Footprint</small><b>Admin</b></div>
-      <nav class="adm-nav" id="nav" aria-label="Admin" hidden>
-        <a href="#/queue" data-k="queue">Review queue</a>
-        <a href="#/projects" data-k="projects">All projects</a>
-        <a href="#/orgs" data-k="orgs">Organisations</a>
-        <a href="#/history" data-k="history">History</a>
-        <a href="{{SITE_URL}}" target="_blank" rel="noopener">Open the map</a>
-      </nav>
-      <span class="adm-who" id="who" hidden>Signed in as DSU admin · <button type="button" id="logout">Sign out</button></span>
-    </div>
-  </header>
-  <main class="adm-main" id="app"><p class="muted">Loading…</p></main>
-  <dialog class="modal" id="detail" aria-label="Project preview"></dialog>
-
-  <script src="{{SITE_URL}}assets/js/common.js"></script>
-  <script src="{{SITE_URL}}assets/js/icons.js"></script>
-  <script src="{{SITE_URL}}assets/js/render.js"></script>
-  <script>
+/* Manage pages for signed-in DSU admins: review queue, all projects, organisations, approved editors, history.
+   They talk to the back end with the session key from the Sign in window (see SF.auth in common.js). */
   "use strict";
   (() => {
-    const SITE = "{{SITE_URL}}";
-    const API = location.origin + "/admin/api";
+    const SITE = ""; // this page is part of the website, so map data and photos are found next to it
+    const API = (SF.config.authUrl || "") + "/admin/api";
     const app = document.getElementById("app");
     const esc = SF.esc;
     const PEOPLE = [{ key: "total", label: "Total" }, ...SF.TARGET_GROUPS];
@@ -139,13 +11,18 @@
 
     /* ---------- helpers ---------- */
     async function api(path, opts = {}) {
-      const r = await fetch(API + path, {
-        method: opts.method || "GET", credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-SF-Admin": "1" },
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
-      });
+      const s = SF.auth.get();
+      if (!s) { showLogin(); throw new Error("Please sign in."); }
+      let r;
+      try {
+        r = await fetch(API + path, {
+          method: opts.method || "GET",
+          headers: { "Content-Type": "application/json", "X-SF-Admin": "1", Authorization: `Bearer ${s.token}` },
+          body: opts.body ? JSON.stringify(opts.body) : undefined,
+        });
+      } catch (e) { throw new Error("The back end could not be reached. Please check your connection and try again."); }
       const j = await r.json().catch(() => ({ ok: false, error: "The server did not answer properly." }));
-      if (r.status === 401 && path !== "/login") { showLogin(); throw new Error("Please sign in."); }
+      if (r.status === 401) { SF.auth.clear(); SF.auth.drawButton(); showLogin("Your session has ended. Please sign in again."); throw new Error("Please sign in."); }
       if (!j.ok) throw new Error(j.error || "Something went wrong.");
       return j;
     }
@@ -168,30 +45,29 @@
     }
 
     /* ---------- sign in ---------- */
-    function showLogin() {
-      document.getElementById("nav").hidden = true; document.getElementById("who").hidden = true;
-      app.innerHTML = `<form class="card login" id="login-form">
-        <h1>Sign in</h1>
-        <p class="lede2" style="margin:0">Admin pages for the Durable Solutions Unit.</p>
-        <label class="f">Password<input class="input" type="password" id="pw" autocomplete="current-password" required></label>
-        <div class="err-line" id="login-err" role="alert"></div>
-        <button class="btn btn-primary" type="submit" id="login-btn">Sign in</button>
-      </form>`;
-      document.getElementById("pw").focus();
-      document.getElementById("login-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const b = document.getElementById("login-btn");
-        busy(b, true, "Signing in");
-        try { await api("/login", { method: "POST", body: { password: document.getElementById("pw").value } }); await boot(); }
-        catch (err) { document.getElementById("login-err").textContent = err.message; busy(b, false); }
-      });
+    function showLogin(msg) {
+      document.getElementById("nav").hidden = true;
+      if (!SF.config.authUrl) {
+        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>Sign-in is not switched on for this site yet.</p><a class="btn" href="index.html">Back to the map</a></div>`;
+        return;
+      }
+      app.innerHTML = `<div class="card gate"><h1>Manage projects</h1>
+        <p>${esc(msg || "For the Durable Solutions Unit. Sign in with your work email to see and edit all projects.")}</p>
+        <button type="button" class="btn btn-primary" id="gate-signin">${SF.icons.user} Sign in</button></div>`;
+      document.getElementById("gate-signin").addEventListener("click", () => SF.auth.open());
     }
-    document.getElementById("logout").addEventListener("click", async () => { await api("/logout", { method: "POST" }).catch(() => {}); showLogin(); });
+    document.addEventListener("sf-signed-in", () => boot().catch((e) => { if (e.message !== "Please sign in.") fail(e); }));
 
     /* ---------- start ---------- */
     async function boot() {
+      const s = SF.auth.get();
+      if (!s) return showLogin();
+      if (s.role !== "admin") {
+        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>These pages are for DSU admins. You are signed in as ${esc(s.email)}.</p><a class="btn" href="index.html">Back to the map</a></div>`;
+        return;
+      }
       ME = await api("/me");
-      document.getElementById("nav").hidden = false; document.getElementById("who").hidden = false;
+      document.getElementById("nav").hidden = false;
       route();
     }
     async function loadLists() {
@@ -215,6 +91,7 @@
         if (h[0] === "projects") { setNav("projects"); return await viewProjects(); }
         if (h[0] === "orgs") { setNav("orgs"); return await viewOrgs(); }
         if (h[0] === "history") { setNav("history"); return await viewHistory(); }
+        if (h[0] === "editors") { setNav("editors"); return await viewEditors(); }
         setNav("queue"); return await viewQueue(["published", "rejected"].includes(h[1]) ? h[1] : "pending");
       } catch (e) { if (e.message !== "Please sign in.") fail(e); }
     }
@@ -261,7 +138,7 @@
             <td><a class="btn btn-sm ${status === "pending" ? "btn-primary" : ""}" href="#/review/${i.id}">${status === "pending" ? "Review" : "Open"}</a></td>
           </tr>`).join("")}</tbody></table>` : `<div class="empty">${status === "pending" ? "Nothing waiting for review." : "Nothing here yet."}</div>`}</div>
         </div>
-        <div class="note-box">You get an email (through GitHub) when something new arrives. Use <a href="#/projects">All projects</a> to edit anything already on the map.</div>`;
+        <div class="note-box">${ME.setup.inbox ? "You get an email (through GitHub) when something new arrives. " : ""}Use <a href="#/projects">All projects</a> to edit anything already on the map.</div>`;
       app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", (e) => { if (!e.target.closest("a")) location.hash = `#/review/${tr.dataset.id}`; }));
       const q = document.getElementById("q");
       q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
@@ -547,7 +424,7 @@
       app.innerHTML = `
         <div class="row between">
           <div><h1>All projects</h1><p class="lede2">Everything in the database. Edit a project and press <b>Save and publish</b> to update the map.</p></div>
-          <div class="row"><a class="btn" href="${API}/export">Download a backup (JSON)</a><a class="btn btn-primary" href="#/project/new">Add a project yourself</a></div>
+          <div class="row"><button type="button" class="btn" id="b-export">Download a backup (JSON)</button><a class="btn btn-primary" href="#/project/new">Add a project yourself</a></div>
         </div>
         ${!items.length ? `<div class="note-box">No projects yet. Go to the <a href="#/queue">Review queue</a> and import the current map data first.</div>` : ""}
         <div class="card tbl-card">
@@ -560,6 +437,19 @@
             <td>${i.published ? '<span class="pill2 ok">On the map</span>' : '<span class="pill2 mute">Hidden</span>'}</td></tr>`).join("")}</tbody></table></div>
         </div>`;
       app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", () => (location.hash = `#/project/${encodeURIComponent(tr.dataset.id)}`)));
+      document.getElementById("b-export").addEventListener("click", async (e) => {
+        busy(e.target, true, "Preparing");
+        try {
+          const r = await fetch(API + "/export", { headers: { Authorization: `Bearer ${SF.auth.get()?.token || ""}` } });
+          if (!r.ok) throw new Error("The backup could not be made. Please sign in again and retry.");
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(await r.blob());
+          a.download = `solutions-footprint-backup-${new Date().toISOString().slice(0, 10)}.json`;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } catch (err) { alert(err.message); }
+        busy(e.target, false);
+      });
       const q = document.getElementById("q");
       q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
     }
@@ -657,14 +547,50 @@
       const { items, repo } = await api("/log");
       app.innerHTML = `
         <div><h1>History</h1><p class="lede2">Every change made from these pages. Each change to the map is also a commit on GitHub, so it can be undone there.</p></div>
-        <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>When</th><th>What</th><th>Project</th><th>GitHub</th></tr></thead><tbody>
-          ${items.map((i) => `<tr><td style="white-space:nowrap">${fmtWhen(i.at)}</td><td>${esc(i.action[0].toUpperCase() + i.action.slice(1))}</td><td>${esc(i.detail || "")}</td>
+        <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>When</th><th>What</th><th>Details</th><th>By</th><th>GitHub</th></tr></thead><tbody>
+          ${items.map((i) => `<tr><td style="white-space:nowrap">${fmtWhen(i.at)}</td><td>${esc(i.action[0].toUpperCase() + i.action.slice(1))}</td><td>${esc(i.detail || "")}</td><td>${esc(i.by_email || "")}</td>
           <td>${i.commit_sha ? `<a href="https://github.com/${esc(repo)}/commit/${esc(i.commit_sha)}" target="_blank" rel="noopener">${esc(i.commit_sha.slice(0, 7))}</a>` : ""}</td></tr>`).join("")}
         </tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div></div>`;
     }
 
+    /* ---------- approved editors ---------- */
+    async function viewEditors() {
+      const { items, me } = await api("/editors");
+      app.innerHTML = `
+        <div><h1>Approved editors</h1><p class="lede2">Only these emails can sign in. Anyone else is asked to contact the DSWG or their agency focal point. Removing someone signs them out at once.</p></div>
+        <div class="card tbl-card"><div class="tbl-wrap"><table class="adm"><thead><tr><th>Email</th><th>Role</th><th>Added</th><th>Last signed in</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
+          ${items.map((i) => `<tr>
+            <td><b style="font-weight:500">${esc(i.email)}</b>${i.email === me ? ' <span class="pill2 info">You</span>' : ""}</td>
+            <td>DSU admin${i.owner ? ' <span class="pill2 mute">Owner</span>' : ""}</td>
+            <td>${i.owner ? '<span class="muted">Set in the back end</span>' : `${fmtDay(i.added_at)}${i.added_by ? `<br><span class="muted" style="font-size:13px">by ${esc(i.added_by)}</span>` : ""}`}</td>
+            <td>${i.last_signin ? fmtWhen(i.last_signin) : '<span class="muted">Not yet</span>'}</td>
+            <td>${i.owner ? "" : `<button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.email)}">Remove</button>`}</td></tr>`).join("")}
+        </tbody></table></div></div>
+        <section class="card ed"><h2>Add a DSU admin <small>They can see and edit all projects, and publish to the map</small></h2>
+          <form class="ed-add" id="ed-form"><label class="f">Work email<input class="input" type="email" id="ed-email" required placeholder="name@un.org"></label>
+          <button type="submit" class="btn btn-primary" id="ed-go">Add</button></form>
+          <div class="err-line" id="ed-err" role="alert"></div>
+          <small class="muted">Agency editors, who can only edit their own agency's projects, come in the next stage.</small>
+        </section>`;
+      document.getElementById("ed-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const b = document.getElementById("ed-go"), err = document.getElementById("ed-err");
+        const email = document.getElementById("ed-email").value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Please enter a valid email address."; return; }
+        busy(b, true, "Adding");
+        try { await api("/editors", { method: "POST", body: { email } }); SF.toast(`${email} added`); route(); }
+        catch (x) { err.textContent = x.message; busy(b, false); }
+      });
+      app.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
+        const email = b.dataset.rm;
+        if (!confirm(`Remove ${email}? They will be signed out and will not be able to sign in again.`)) return;
+        busy(b, true, "Removing");
+        try { await api(`/editors/${encodeURIComponent(email)}`, { method: "DELETE" }); SF.toast(`${email} removed`); if (email === me) { SF.auth.clear(); location.href = "index.html"; } else route(); }
+        catch (x) { alert(x.message); busy(b, false); }
+      }));
+    }
+
+    SF.renderHeader("manage");
+    SF.renderFooter();
     loadLists().finally(() => boot().catch((e) => { if (e.message !== "Please sign in.") fail(e); }));
   })();
-  </script>
-</body>
-</html>
