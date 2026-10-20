@@ -102,7 +102,9 @@
     .gate h1 { font-size: 22px; margin: 0; }
     .gate p { margin: 0; color: var(--ink-2); }
     .ed-add { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-    .ed-add .f { flex: 1 1 260px; }
+    .ed-add .f { flex: 1 1 200px; }
+    .ed-add .f.sm { flex: 0 1 170px; }
+    .lead-lock { font-weight: 400; color: var(--ink-2); font-size: 14px; padding: 9px 0; }
   </style>
 </head>
 <body>
@@ -110,11 +112,12 @@
   <nav class="adm-bar" id="nav" aria-label="Manage" hidden>
     <div class="in">
       <span class="lbl">Manage</span>
-      <a href="#/queue" data-k="queue">Review queue</a>
-      <a href="#/projects" data-k="projects">All projects</a>
-      <a href="#/orgs" data-k="orgs">Organisations</a>
-      <a href="#/editors" data-k="editors">Approved editors</a>
-      <a href="#/history" data-k="history">History</a>
+      <a href="#/queue" data-k="queue" data-role="admin">Review queue</a>
+      <a href="#/projects" data-k="projects" id="nav-projects">All projects</a>
+      <a href="#/changes" data-k="changes" data-role="agency">Sent for review</a>
+      <a href="#/orgs" data-k="orgs" data-role="admin">Organisations</a>
+      <a href="#/editors" data-k="editors" data-role="admin">Approved editors</a>
+      <a href="#/history" data-k="history" data-role="admin">History</a>
     </div>
   </nav>
   <main class="adm-main" id="app"><p class="muted">Loading…</p></main>

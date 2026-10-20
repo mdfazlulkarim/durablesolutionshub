@@ -369,11 +369,11 @@ SF.auth = {
     if (!j.ok) throw Object.assign(new Error(j.error || "Something went wrong. Please try again."), { code: j.code || "" });
     return j;
   },
-  initials(email) {
-    const parts = String(email || "").split("@")[0].split(/[._-]+/).filter(Boolean);
+  initials(s) {
+    const parts = (s.name ? String(s.name).split(/\s+/) : String(s.email || "").split("@")[0].split(/[._-]+/)).filter(Boolean);
     return ((parts[0] || "?")[0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   },
-  roleLabel: (role) => (role === "admin" ? "DSU admin" : "Agency editor"),
+  roleLabel: (s) => (s.role === "admin" ? "DSU admin" : `${s.agency || "Agency"} admin`),
   drawButton() {
     const host = document.getElementById("acct");
     if (!host) return;
@@ -385,12 +385,13 @@ SF.auth = {
     }
     const admin = s.role === "admin";
     host.innerHTML = `
-      <button type="button" class="avatar-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false" aria-controls="acct-menu" title="Signed in as ${SF.esc(s.email)}">${SF.esc(SF.auth.initials(s.email))}</button>
+      <button type="button" class="avatar-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false" aria-controls="acct-menu" title="Signed in as ${SF.esc(s.name || s.email)}">${SF.esc(SF.auth.initials(s))}</button>
       <div class="dropdown-menu acct-menu" id="acct-menu" role="menu" hidden>
-        <div class="acct-who"><b>${SF.esc(s.email)}</b>Signed in<br><span class="acct-role">${SF.auth.roleLabel(s.role)}</span></div>
+        <div class="acct-who"><b>${SF.esc(s.name || s.email)}</b>${s.name ? `${SF.esc(s.email)}<br>` : "Signed in<br>"}<span class="acct-role">${SF.esc(SF.auth.roleLabel(s))}</span></div>
         ${admin ? `<a class="menu-item" role="menuitem" href="manage.html#/projects">Manage all projects</a>
         <a class="menu-item" role="menuitem" href="manage.html#/queue">Review queue</a>
-        <a class="menu-item" role="menuitem" href="manage.html#/editors">Approved editors</a>` : ""}
+        <a class="menu-item" role="menuitem" href="manage.html#/editors">Approved editors</a>` : `<a class="menu-item" role="menuitem" href="manage.html#/projects">${SF.esc(s.agency || "My agency")} projects</a>
+        <a class="menu-item" role="menuitem" href="manage.html#/changes">Sent for review</a>`}
         <button type="button" class="menu-item" role="menuitem" id="signout-btn">Sign out</button>
       </div>`;
     SF.bindDropdown("acct");
@@ -483,7 +484,7 @@ SF.auth = {
         err.textContent = ""; busy(go, true, "Checking");
         try {
           const s = await SF.auth.post("/api/auth/verify", { email, code });
-          SF.auth.save({ token: s.token, expires: s.expires, email: s.email, role: s.role });
+          SF.auth.save({ token: s.token, expires: s.expires, email: s.email, name: s.name || "", role: s.role, agency: s.agency || null });
           d.close();
           SF.auth.drawButton();
           SF.toast("Signed in");

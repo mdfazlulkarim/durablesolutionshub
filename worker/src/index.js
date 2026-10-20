@@ -72,7 +72,7 @@ const SCHEMA = [
      private TEXT, published INTEGER NOT NULL DEFAULT 1, created_at TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS submissions (id TEXT PRIMARY KEY, token TEXT NOT NULL, kind TEXT NOT NULL, target_id TEXT,
      ref TEXT, source TEXT, batch TEXT, row_no INTEGER, status TEXT NOT NULL DEFAULT 'pending', lead TEXT, name TEXT,
-     data TEXT NOT NULL, private TEXT, note TEXT, received_at TEXT, reviewed_at TEXT, ip TEXT)`,
+     data TEXT NOT NULL, private TEXT, note TEXT, received_at TEXT, reviewed_at TEXT, ip TEXT, submitted_by TEXT)`,
   `CREATE INDEX IF NOT EXISTS sub_status ON submissions(status, received_at)`,
   `CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, owner TEXT NOT NULL, kind TEXT NOT NULL, name TEXT, mime TEXT,
      size INTEGER, data BLOB, created_at TEXT)`,
@@ -81,7 +81,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS logos (acronym TEXT PRIMARY KEY, name TEXT, full TEXT, mark TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
   `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT, by_email TEXT)`,
-  `CREATE TABLE IF NOT EXISTS editors (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'admin', agency TEXT, added_by TEXT, added_at TEXT, last_signin TEXT)`,
+  `CREATE TABLE IF NOT EXISTS editors (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'admin', agency TEXT, added_by TEXT, added_at TEXT, last_signin TEXT, name TEXT)`,
   `CREATE TABLE IF NOT EXISTS signin_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, sent_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS ratelimit (key TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)`,
 ];
@@ -97,7 +97,9 @@ async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
   // databases made before sign-in existed get the new column for who made each change
-  try { await env.DB.prepare("ALTER TABLE log ADD COLUMN by_email TEXT").run(); } catch (e) { /* already there */ }
+  for (const sql of ["ALTER TABLE log ADD COLUMN by_email TEXT", "ALTER TABLE editors ADD COLUMN name TEXT", "ALTER TABLE submissions ADD COLUMN submitted_by TEXT"]) {
+    try { await env.DB.prepare(sql).run(); } catch (e) { /* already there */ }
+  }
   schemaReady = true;
 }
 const one = (env, sql, ...b) => env.DB.prepare(sql).bind(...b).first();
@@ -545,7 +547,8 @@ async function publicApi(req, env, ctx, url) {
 
 /* ---------------- sign-in with an emailed code ---------------- */
 // Only approved emails can sign in: the owners in ADMIN_EMAILS (set in wrangler.toml) and the
-// editors that an admin adds on the "Approved editors" page. Removing someone ends their session at once.
+// people a DSU admin adds on the "Approved editors" page. Removing someone ends their session at once.
+// Roles: "admin" (DSU, all projects, publishes) and "agency" (one agency's projects; changes go to the review queue).
 const SESSION_HOURS = 24;
 const CODE_MINUTES = 10;
 const normEmail = (e) => String(e || "").trim().toLowerCase().slice(0, 160);
@@ -556,12 +559,16 @@ const toB64url = (b64) => b64.replace(/[+/=]/g, (c) => ({ "+": "-", "/": "_", "=
 const fromB64url = (s) => s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4);
 
 async function sessionSecret(env) { return setting(env, "session_secret", () => uid() + uid()); }
+const ownerName = async (env, email) => (await setting(env, `name:${email}`)) || String(env.ADMIN_NAMES || "").split(",").map((x) => x.trim())[owners(env).indexOf(email)] || "";
 async function approved(env, email) {
   if (!email) return null;
-  if (owners(env).includes(email)) return { email, role: "admin", owner: true };
-  const r = await one(env, "SELECT email, role, agency FROM editors WHERE email=?", email);
-  return r ? { email: r.email, role: r.role || "admin", agency: r.agency || null, owner: false } : null;
+  if (owners(env).includes(email)) return { email, name: await ownerName(env, email), role: "admin", agency: null, owner: true };
+  const r = await one(env, "SELECT email, name, role, agency FROM editors WHERE email=?", email);
+  if (!r) return null;
+  const role = r.role === "agency" && r.agency ? "agency" : "admin";
+  return { email: r.email, name: r.name || "", role, agency: role === "agency" ? r.agency : null, owner: false };
 }
+const nameOf = async (env, email) => (email ? (await approved(env, email))?.name || "" : "");
 async function makeToken(env, email) {
   const exp = Date.now() + SESSION_HOURS * 3600e3;
   const body = toB64url(bytesToB64(enc.encode(JSON.stringify({ e: email, x: exp }))));
@@ -634,7 +641,7 @@ async function authApi(req, env, url, ipHash) {
     await run(env, "UPDATE editors SET last_signin=? WHERE email=?", nowIso(), email);
     if (who.owner) await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", `signin:${email}`, nowIso());
     const t = await makeToken(env, email);
-    return json({ ok: true, token: t.token, expires: t.expires, email, role: who.role, owner: who.owner });
+    return json({ ok: true, token: t.token, expires: t.expires, email, name: who.name, role: who.role, agency: who.agency, owner: who.owner });
   }
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
     const who = await signedIn(env, req);
@@ -676,7 +683,7 @@ async function subDetail(env, s, fileUrl) {
   const current = s.target_id ? await one(env, "SELECT id, ref, data FROM projects WHERE id=?", s.target_id) : null;
   return {
     id: s.id, kind: s.kind, ref: s.ref, source: s.source, row: s.row_no, status: s.status, receivedAt: s.received_at,
-    reviewedAt: s.reviewed_at, note: s.note, targetId: s.target_id,
+    reviewedAt: s.reviewed_at, note: s.note, targetId: s.target_id, by: s.submitted_by || null, byName: await nameOf(env, s.submitted_by),
     data: parse(s.data, {}), private: parse(s.private, {}),
     photos: await Promise.all(files.filter((f) => f.kind === "photo").map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name, size: f.size }))),
     logo: (await Promise.all(files.filter((f) => f.kind === "logo").map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name }))))[0] || null,
@@ -701,11 +708,12 @@ async function adminApi(req, env, ctx, url) {
 
   const who = await signedIn(env, req);
   if (!who) throw new HttpError(401, "Please sign in.");
-  if (who.role !== "admin") throw new HttpError(403, "Only DSU admins can use these pages.");
   const by = who.email;
   await ensureImported(env);
   if (req.method !== "GET" && req.headers.get("X-SF-Admin") !== "1") throw new HttpError(403, "Request refused.");
   const fileUrl = async (id) => `${url.origin}/admin/api/file/${id}?k=${await hmac(await sessionSecret(env), `f.${id}`)}`;
+  if (who.role === "agency") return agencyApi(req, env, ctx, url, path, who, fileUrl);
+  if (who.role !== "admin") throw new HttpError(403, "Only DSU admins can use these pages.");
 
   if (path === "/me") {
     const counts = {};
@@ -723,7 +731,8 @@ async function adminApi(req, env, ctx, url) {
     const items = [];
     for (const s of rows) {
       const photos = (await one(env, "SELECT count(*) AS n FROM files WHERE owner=? AND kind='photo'", s.id)).n;
-      items.push({ id: s.id, ref: s.ref, kind: s.kind, name: s.name, lead: s.lead, source: s.source, row: s.row_no, receivedAt: s.received_at, reviewedAt: s.reviewed_at, photos, checks: status === "pending" ? await computeChecks(env, s) : [] });
+      items.push({ id: s.id, ref: s.ref, kind: s.kind, name: s.name, lead: s.lead, source: s.source, row: s.row_no, receivedAt: s.received_at, reviewedAt: s.reviewed_at, photos,
+        by: s.submitted_by || null, byName: await nameOf(env, s.submitted_by), checks: status === "pending" ? await computeChecks(env, s) : [] });
     }
     return json({ ok: true, items });
   }
@@ -765,7 +774,7 @@ async function adminApi(req, env, ctx, url) {
     if (cur && !s.target_id && body.photosFinal) photos = [...before.map((p) => ({ path: p })), ...photos.filter((x) => x.file)];
     const logoFile = (await one(env, "SELECT id FROM files WHERE owner=? AND kind='logo'", s.id))?.id;
     const r = await publishProject(env, {
-      id: cur?.id, ref: cur?.ref || s.ref, data, priv: { ...parse(cur?.private, {}), ...(body.private || parse(s.private, {})) },
+      id: cur?.id, ref: cur?.ref || s.ref, data, priv: (({ _photosKeep, ...rest }) => rest)({ ...parse(cur?.private, {}), ...(body.private || parse(s.private, {})) }),
       photos, logo: logoFile, logoName: data.leadName ? String(data.leadName).replace(/^[^,]*,\s*/, "") : null,
       message: `${cur ? "Update" : "Publish"} ${cur?.ref || s.ref}: ${str(data.name, 80)}`,
     });
@@ -836,20 +845,42 @@ async function adminApi(req, env, ctx, url) {
     await addLog(env, "logo", acronym, sha, by);
     return json({ ok: true, commit: sha });
   }
-  // Approved editors: who can sign in. Owners (ADMIN_EMAILS) are fixed; the rest are added here.
+  // Approved editors: who can sign in. Owners (ADMIN_EMAILS) are fixed; the rest are added here by a DSU admin.
   if (path === "/editors" && req.method === "GET") {
-    const rows = await all(env, "SELECT email, role, agency, added_by, added_at, last_signin FROM editors ORDER BY email");
+    const rows = await all(env, "SELECT email, name, role, agency, added_by, added_at, last_signin FROM editors ORDER BY role, agency, email");
     const own = [];
-    for (const e of owners(env)) own.push({ email: e, role: "admin", owner: true, last_signin: await setting(env, `signin:${e}`) });
-    return json({ ok: true, items: [...own, ...rows.filter((r) => !owners(env).includes(r.email)).map((r) => ({ ...r, owner: false }))], me: who.email });
+    for (const e of owners(env)) own.push({ email: e, name: await ownerName(env, e), role: "admin", agency: null, owner: true, last_signin: await setting(env, `signin:${e}`) });
+    const leads = (await all(env, "SELECT DISTINCT lead FROM projects WHERE lead IS NOT NULL ORDER BY lead")).map((r) => r.lead);
+    return json({ ok: true, items: [...own, ...rows.filter((r) => !owners(env).includes(r.email)).map((r) => ({ ...r, owner: false }))], me: who.email, leads });
   }
+  const editorFields = (body) => {
+    const role = body.role === "agency" ? "agency" : "admin";
+    const agency = role === "agency" ? str(body.agency, 40) : null;
+    if (role === "agency" && !agency) throw new HttpError(400, "Choose the agency this person can edit.");
+    return { name: str(body.name, 120), role, agency };
+  };
   if (path === "/editors" && req.method === "POST") {
     const body = await readJson(req, 5000);
     const email = normEmail(body.email);
     if (!validEmail(email)) throw new HttpError(400, "Please enter a valid email address.");
+    const f = editorFields(body);
+    if (!f.name) throw new HttpError(400, "Please enter the person's name.");
     if (owners(env).includes(email) || (await one(env, "SELECT email FROM editors WHERE email=?", email))) throw new HttpError(409, "This email is already on the list.");
-    await run(env, "INSERT INTO editors(email,role,agency,added_by,added_at) VALUES(?,?,?,?,?)", email, "admin", str(body.agency, 80) || null, by, nowIso());
-    await addLog(env, "editor added", `${email} (DSU admin)`, null, by);
+    await run(env, "INSERT INTO editors(email,name,role,agency,added_by,added_at) VALUES(?,?,?,?,?,?)", email, f.name, f.role, f.agency, by, nowIso());
+    await addLog(env, "editor added", `${f.name} <${email}>, ${f.role === "agency" ? `${f.agency} admin` : "DSU admin"}`, null, by);
+    return json({ ok: true });
+  }
+  if ((m = path.match(/^\/editors\/(.+)$/)) && req.method === "PUT") {
+    const email = normEmail(decodeURIComponent(m[1]));
+    const body = await readJson(req, 5000);
+    if (owners(env).includes(email)) {
+      await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", `name:${email}`, str(body.name, 120));
+      return json({ ok: true });
+    }
+    const f = editorFields(body);
+    const r = await run(env, "UPDATE editors SET name=?, role=?, agency=? WHERE email=?", f.name, f.role, f.agency, email);
+    if (!r.meta?.changes) throw new HttpError(404, "This email is not on the list.");
+    await addLog(env, "editor changed", `${f.name} <${email}>, ${f.role === "agency" ? `${f.agency} admin` : "DSU admin"}`, null, by);
     return json({ ok: true });
   }
   if ((m = path.match(/^\/editors\/(.+)$/)) && req.method === "DELETE") {
@@ -870,6 +901,87 @@ async function adminApi(req, env, ctx, url) {
     });
   }
   throw new HttpError(404, "Not found.");
+}
+
+/* ---------------- agency admins ----------------
+   They see and edit only the projects their agency leads. Saving never publishes: it puts the change in the
+   DSU review queue (as a correction, or as a new project), where only a DSU admin can publish it. */
+async function agencyApi(req, env, ctx, url, path, who, fileUrl) {
+  const agency = who.agency;
+  const by = who.email;
+  const owner = `agency:${(await sha256(by)).slice(0, 24)}`; // photos they upload before sending
+  const mine = (lead) => String(lead || "").toLowerCase() === String(agency).toLowerCase();
+  const pendingFor = (target) => one(env, "SELECT * FROM submissions WHERE status='pending' AND submitted_by=? AND target_id IS ? ORDER BY received_at DESC", by, target);
+  let m;
+  if (path === "/me") {
+    const counts = { pending: (await one(env, "SELECT count(*) AS n FROM submissions WHERE status='pending' AND submitted_by=?", by)).n };
+    return json({ ok: true, counts, me: who, siteUrl: env.SITE_URL, setup: {} });
+  }
+  if (path === "/projects") {
+    const rows = await all(env, "SELECT id, ref, lead, name, published, updated_at, data FROM projects WHERE lower(lead)=lower(?) ORDER BY name", agency);
+    const pend = new Set((await all(env, "SELECT target_id FROM submissions WHERE status='pending' AND submitted_by=?", by)).map((r) => r.target_id));
+    return json({ ok: true, agency, items: rows.map((r) => { const d = parse(r.data, {}); return { id: r.id, ref: r.ref, lead: r.lead, name: r.name, published: !!r.published, updatedAt: r.updated_at, states: d.nationwide ? ["Nationwide"] : d.states || [], start: d.start, end: d.end, budget: d.budget, people: d.people?.total ?? null, pending: pend.has(r.id) }; }) });
+  }
+  if ((m = path.match(/^\/project\/([^/]+)$/))) {
+    const id = decodeURIComponent(m[1]);
+    const isNew = id === "new";
+    const r = isNew ? null : await one(env, "SELECT * FROM projects WHERE id=?", id);
+    if (!isNew && (!r || !mine(r.lead))) throw new HttpError(404, "Project not found.");
+    if (req.method === "GET") {
+      const data = parse(r.data, {});
+      const p = await pendingFor(r.id);
+      return json({ ok: true, item: { id: r.id, ref: r.ref, published: !!r.published, data, private: parse(r.private, {}), updatedAt: r.updated_at,
+        photos: (data.photos || []).map((x) => ({ path: x, url: `${env.SITE_URL}${x}` })),
+        pending: p ? { at: p.received_at, data: parse(p.data, {}), private: parse(p.private, {}),
+          photos: await Promise.all((await all(env, "SELECT id, name FROM files WHERE owner=? AND kind='photo' ORDER BY created_at", p.id)).map(async (f) => ({ file: f.id, url: await fileUrl(f.id), name: f.name }))) } : null } });
+    }
+    if (req.method === "PUT") {
+      const body = await readJson(req);
+      const p = cleanProject(body.data || {});
+      p.lead = r ? r.lead : agency; // agencies cannot move a project to another lead
+      const errs = checkAnswers(p);
+      if (errs.length) throw new HttpError(400, errs.join("; "));
+      const photos = Array.isArray(body.photos) ? body.photos : [];
+      const keep = r ? photos.filter((x) => x.path && (parse(r.data, {}).photos || []).includes(x.path)).map((x) => x.path) : [];
+      const was = r ? parse(r.private, {}) : {};
+      const priv = { fpName: str(body.private?.fpName, 120) || was.fpName || "", fpEmail: str(body.private?.fpEmail, 160) || was.fpEmail || "", ...(r ? { _photosKeep: keep } : {}) };
+      const prev = r ? await pendingFor(r.id) : null;
+      const sid = prev ? prev.id : uid();
+      if (prev) {
+        await run(env, "UPDATE submissions SET data=?, private=?, name=?, received_at=? WHERE id=?", JSON.stringify(p), JSON.stringify(priv), p.name, nowIso(), sid);
+      } else {
+        const ref = r ? r.ref : await nextRef(env, refPrefix(agency));
+        await run(env, `INSERT INTO submissions(id,token,kind,target_id,ref,source,status,lead,name,data,private,received_at,submitted_by)
+          VALUES(?,?,?,?,?,'agency','pending',?,?,?,?,?,?)`, sid, uid(), r ? "correction" : "new", r ? r.id : null, ref, p.lead, p.name, JSON.stringify(p), JSON.stringify(priv), nowIso(), by);
+      }
+      // photos: new uploads move to the submission; photos removed in the editor are dropped
+      const want = new Set(photos.filter((x) => x.file).map((x) => x.file).slice(0, MAX_PHOTOS));
+      for (const f of await all(env, "SELECT id FROM files WHERE (owner=? OR owner=?) AND kind='photo'", owner, sid)) {
+        if (want.has(f.id)) await run(env, "UPDATE files SET owner=? WHERE id=?", sid, f.id);
+        else await run(env, "DELETE FROM files WHERE id=?", f.id);
+      }
+      const ref = (await one(env, "SELECT ref FROM submissions WHERE id=?", sid)).ref;
+      await addLog(env, "sent for review", `${ref}: ${p.name}`, null, by);
+      ctx.waitUntil(notify(env, `${r ? "Change" : "New project"} ${ref} from ${who.name || by} (${agency})`, `${p.name}\n\nReview it here: ${env.SITE_URL || ""}manage.html#/review/${sid}`));
+      return json({ ok: true, ref, status: "pending" });
+    }
+  }
+  if (path === "/file" && req.method === "POST") {
+    const body = await readJson(req);
+    const have = (await one(env, "SELECT count(*) AS n FROM files WHERE owner=?", owner)).n;
+    if (have >= 12) throw new HttpError(429, "Too many photos waiting. Please send your changes first.");
+    const id = await saveImage(env, owner, "photo", body.image);
+    return json({ ok: true, file: id, url: await fileUrl(id) });
+  }
+  if ((m = path.match(/^\/file\/([a-f0-9]+)$/)) && req.method === "DELETE") {
+    await run(env, "DELETE FROM files WHERE id=? AND owner=?", m[1], owner);
+    return json({ ok: true });
+  }
+  if (path === "/changes") {
+    const rows = await all(env, "SELECT id, ref, kind, name, status, received_at, reviewed_at, target_id FROM submissions WHERE submitted_by=? ORDER BY received_at DESC LIMIT 200", by);
+    return json({ ok: true, items: rows.map((r) => ({ ref: r.ref, kind: r.kind, name: r.name, status: r.status, receivedAt: r.received_at, reviewedAt: r.reviewed_at, targetId: r.target_id })) });
+  }
+  throw new HttpError(403, "This page is for DSU admins only.");
 }
 
 // Keep the uploaded files of a submission in line with the photos kept in the editor

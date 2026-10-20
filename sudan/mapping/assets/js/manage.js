@@ -7,7 +7,7 @@
     const app = document.getElementById("app");
     const esc = SF.esc;
     const PEOPLE = [{ key: "total", label: "Total" }, ...SF.TARGET_GROUPS];
-    let GEO = null, ORGS = [], LOCALITIES = {}, ME = null;
+    let GEO = null, ORGS = [], LOCALITIES = {}, ME = null, AGENCY = null;
 
     /* ---------- helpers ---------- */
     async function api(path, opts = {}) {
@@ -62,11 +62,15 @@
     async function boot() {
       const s = SF.auth.get();
       if (!s) return showLogin();
-      if (s.role !== "admin") {
-        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>These pages are for DSU admins. You are signed in as ${esc(s.email)}.</p><a class="btn" href="index.html">Back to the map</a></div>`;
-        return;
-      }
       ME = await api("/me");
+      // keep the name, role and agency in this browser up to date
+      const m = ME.me || {};
+      if (m.email && (m.role !== s.role || (m.name || "") !== (s.name || "") || (m.agency || null) !== (s.agency || null))) {
+        SF.auth.save({ ...s, name: m.name || "", role: m.role, agency: m.agency || null }); SF.auth.drawButton();
+      }
+      AGENCY = m.role === "agency" ? m.agency : null;
+      document.querySelectorAll("#nav [data-role]").forEach((a) => (a.hidden = a.dataset.role !== (AGENCY ? "agency" : "admin")));
+      document.getElementById("nav-projects").textContent = AGENCY ? `${AGENCY} projects` : "All projects";
       document.getElementById("nav").hidden = false;
       route();
     }
@@ -86,6 +90,11 @@
       const h = location.hash.replace(/^#\/?/, "").split("/");
       window.scrollTo(0, 0);
       try {
+        if (AGENCY) {
+          if (h[0] === "project" && h[1]) { setNav("projects"); return await viewProject(decodeURIComponent(h[1])); }
+          if (h[0] === "changes") { setNav("changes"); return await viewChanges(); }
+          setNav("projects"); return await viewProjects();
+        }
         if (h[0] === "review" && h[1]) { setNav("queue"); return await viewReview(h[1]); }
         if (h[0] === "project" && h[1]) { setNav("projects"); return await viewProject(decodeURIComponent(h[1])); }
         if (h[0] === "projects") { setNav("projects"); return await viewProjects(); }
@@ -133,7 +142,7 @@
             <td class="ref">${esc(i.ref || "")}</td>
             <td>${i.kind === "correction" ? "<span class='pill2 info'>Correction</span> " : ""}${esc(i.name)}</td>
             <td>${esc(i.lead)}</td>
-            <td>${i.source === "excel" ? `Excel upload${i.row ? `, row ${i.row}` : ""}` : i.kind === "correction" ? "Suggest a correction" : "Form"}${i.photos ? `, ${i.photos} photo${i.photos === 1 ? "" : "s"}` : ""}</td>
+            <td>${i.source === "agency" ? `${esc(i.byName || i.by || "")} (${esc(i.lead)} admin)` : i.source === "excel" ? `Excel upload${i.row ? `, row ${i.row}` : ""}` : i.kind === "correction" ? "Suggest a correction" : "Form"}${i.photos ? `, ${i.photos} photo${i.photos === 1 ? "" : "s"}` : ""}</td>
             <td>${status === "pending" ? checkChip(i.checks) : ""}</td>
             <td><a class="btn btn-sm ${status === "pending" ? "btn-primary" : ""}" href="#/review/${i.id}">${status === "pending" ? "Review" : "Open"}</a></td>
           </tr>`).join("")}</tbody></table>` : `<div class="empty">${status === "pending" ? "Nothing waiting for review." : "Nothing here yet."}</div>`}</div>
@@ -321,13 +330,14 @@
       const { item: s } = await api(`/submission/${id}`);
       const pending = s.status === "pending";
       const isCorr = s.kind === "correction" && s.current;
-      const state = { peopleSex: s.data.peopleSex || null, owner: s.id, photos: [...(isCorr ? (s.current.data.photos || []).map((p) => ({ path: p, url: SITE + p, label: "On the map" })) : []), ...s.photos.map((p) => ({ ...p, label: SF.fmtSize(p.size || 0) }))], deleteFileNow: false };
+      const keep = isCorr ? (Array.isArray(s.private._photosKeep) ? s.private._photosKeep : s.current.data.photos || []) : [];
+      const state = { peopleSex: s.data.peopleSex || null, owner: s.id, photos: [...keep.map((p) => ({ path: p, url: SITE + p, label: "On the map" })), ...s.photos.map((p) => ({ ...p, label: SF.fmtSize(p.size || 0) }))], deleteFileNow: false };
       let asUpdateOf = null;
       const dup = s.checks.find((c) => c.kind === "duplicate");
       app.innerHTML = `
         <a href="#/queue">Back to the queue</a>
         <div class="row between">
-          <div><div class="muted" style="font-size:13px">${esc(s.ref || "")} · received ${fmtWhen(s.receivedAt)} from ${s.source === "excel" ? `an Excel upload${s.row ? ` (row ${s.row})` : ""}` : isCorr ? "Suggest a correction" : "the form"}</div>
+          <div><div class="muted" style="font-size:13px">${esc(s.ref || "")} · received ${fmtWhen(s.receivedAt)} from ${s.source === "agency" ? `${esc(s.byName || s.by || "")} (${esc(s.data.lead)} admin)` : s.source === "excel" ? `an Excel upload${s.row ? ` (row ${s.row})` : ""}` : isCorr ? "Suggest a correction" : "the form"}</div>
           <h1 id="rv-title">${esc(s.data.name || "")}</h1></div>
           <span class="pill2 ${pending ? "info" : s.status === "published" ? "ok" : "mute"}">${pending ? (isCorr ? "Correction awaiting review" : "Awaiting review") : s.status === "published" ? `Published ${fmtDay(s.reviewedAt)}` : `Not published ${fmtDay(s.reviewedAt)}`}</span>
         </div>
@@ -386,7 +396,7 @@
       drawChecks(ed.values());
       document.getElementById("pv-open").addEventListener("click", () => openPopup(ed.values(), state.photos));
 
-      const body = () => ({ data: ed.values(), private: ed.priv(), note: document.getElementById("e-note")?.value || "", photos: state.photos.filter((p) => p.file), photosFinal: state.photos.map((p) => (p.path ? { path: p.path } : { file: p.file })), asUpdateOf });
+      const body = () => ({ data: ed.values(), private: { ...ed.priv(), ...(s.private._photosKeep ? { _photosKeep: s.private._photosKeep } : {}) }, note: document.getElementById("e-note")?.value || "", photos: state.photos.filter((p) => p.file), photosFinal: state.photos.map((p) => (p.path ? { path: p.path } : { file: p.file })), asUpdateOf });
       document.getElementById("b-save")?.addEventListener("click", async (e) => {
         busy(e.target, true, "Saving");
         try { await api(`/submission/${s.id}`, { method: "PUT", body: body() }); SF.toast("Saved"); } catch (err) { alert(err.message); }
@@ -413,13 +423,14 @@
       document.getElementById("b-reopen")?.addEventListener("click", async () => { await api(`/submission/${s.id}/reopen`, { method: "POST", body: {} }); route(); });
       const reply = document.getElementById("b-reply");
       if (reply) {
-        const upd = () => { const v = ed.values(), p = ed.priv(); reply.href = `mailto:${encodeURIComponent(p.fpEmail || "")}?cc=${SF.config.contactEmail}&subject=${encodeURIComponent(`Your project ${s.ref} for the Solutions Footprint: ${v.name}`)}&body=${encodeURIComponent(`Dear ${p.fpName || "colleague"},\r\n\r\nThank you for submitting "${v.name}" (${s.ref}) to the Solutions Footprint.\r\n\r\n\r\n\r\nKind regards,\r\nDurable Solutions Unit, RCO Sudan`)}`; };
+        const upd = () => { const v = ed.values(), p = ed.priv(); reply.href = `mailto:${encodeURIComponent(s.by || p.fpEmail || "")}?cc=${SF.config.contactEmail}&subject=${encodeURIComponent(`Your project ${s.ref} for the Solutions Footprint: ${v.name}`)}&body=${encodeURIComponent(`Dear ${p.fpName || "colleague"},\r\n\r\nThank you for submitting "${v.name}" (${s.ref}) to the Solutions Footprint.\r\n\r\n\r\n\r\nKind regards,\r\nDurable Solutions Unit, RCO Sudan`)}`; };
         upd(); document.querySelector(".split").addEventListener("input", upd);
       }
     }
 
     /* ---------- all projects ---------- */
     async function viewProjects() {
+      if (AGENCY) return viewAgencyProjects();
       const { items } = await api("/projects");
       app.innerHTML = `
         <div class="row between">
@@ -456,6 +467,7 @@
 
     /* ---------- edit one published project (or add one) ---------- */
     async function viewProject(id) {
+      if (AGENCY) return viewAgencyProject(id);
       const isNew = id === "new";
       const item = isNew ? { id: "new", ref: "", published: true, data: { people: {}, states: [], criteria: [], interventionTypes: [], leadership: [], partners: [], localities: [] }, private: {}, photos: [] } : (await api(`/project/${encodeURIComponent(id)}`)).item;
       const state = { peopleSex: item.data.peopleSex || null, owner: `project:${isNew ? "new" : item.id}`, photos: item.photos.map((p) => ({ ...p, label: p.path ? "On the map" : "New" })), deleteFileNow: true };
@@ -553,33 +565,148 @@
         </tbody></table>` : `<div class="empty">Nothing yet.</div>`}</div></div>`;
     }
 
+    /* ---------- agency admins: their own agency's projects ---------- */
+    async function viewAgencyProjects() {
+      const { items } = await api("/projects");
+      app.innerHTML = `
+        <div class="row between">
+          <div><h1>${esc(AGENCY)} projects</h1><p class="lede2">Projects led by ${esc(AGENCY)}. Edit one and press <b>Send to DSU for review</b>. The map changes once the Durable Solutions Unit publishes it.</p></div>
+          <a class="btn btn-primary" href="#/project/new">Add a new ${esc(AGENCY)} project</a>
+        </div>
+        <div class="card tbl-card">
+          <div class="tbl-tools"><span class="muted" style="font-size:14px">${items.length} project${items.length === 1 ? "" : "s"}</span><span class="grow"></span>
+            <label class="row" style="gap:8px;font-size:14px;color:var(--muted)">Search <input class="input" type="search" id="q" placeholder="Name, number or state" style="width:240px"></label></div>
+          <div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>Number</th><th>Project</th><th>States</th><th>Dates</th><th>Budget</th><th>People</th><th>Status</th></tr></thead>
+          <tbody>${items.map((i) => `<tr class="click" data-id="${esc(i.id)}" data-q="${esc(`${i.ref} ${i.name} ${i.states.join(" ")}`.toLowerCase())}">
+            <td class="ref">${esc(i.ref || "")}</td><td>${esc(i.name)}</td><td>${esc(i.states.join(", "))}</td>
+            <td style="white-space:nowrap">${fmtDates(i.start, i.end)}</td><td>${SF.fmtMoney(i.budget)}</td><td>${i.people == null ? '<span class="pill2 warn">Empty</span>' : SF.fmtInt(i.people)}</td>
+            <td>${i.pending ? '<span class="pill2 info">Sent for review</span>' : i.published ? '<span class="pill2 ok">On the map</span>' : '<span class="pill2 mute">Hidden</span>'}</td></tr>`).join("")}</tbody></table>` : `<div class="empty">No ${esc(AGENCY)} projects on the map yet. Use "Add a new ${esc(AGENCY)} project".</div>`}</div>
+        </div>`;
+      app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", () => (location.hash = `#/project/${encodeURIComponent(tr.dataset.id)}`)));
+      const q = document.getElementById("q");
+      q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
+    }
+    async function viewAgencyProject(id) {
+      const isNew = id === "new";
+      const blank = { lead: AGENCY, people: {}, states: [], criteria: [], interventionTypes: [], leadership: [], partners: [], localities: [] };
+      const item = isNew ? { id: "new", ref: "", data: blank, private: {}, photos: [], pending: null } : (await api(`/project/${encodeURIComponent(id)}`)).item;
+      // continue from the version already sent, if it is still waiting for review
+      const start = item.pending ? item.pending : item;
+      const keep = item.pending && Array.isArray(item.pending.private._photosKeep) ? item.pending.private._photosKeep : (item.data.photos || []);
+      const state = { peopleSex: start.data.peopleSex || null, owner: "agency", deleteFileNow: true,
+        photos: [...keep.map((p) => ({ path: p, url: SITE + p, label: "On the map" })), ...(item.pending ? item.pending.photos.map((p) => ({ ...p, label: "New" })) : [])] };
+      app.innerHTML = `
+        <a href="#/projects">Back to ${esc(AGENCY)} projects</a>
+        <div class="row between">
+          <div><div class="muted" style="font-size:13px">${isNew ? `New ${esc(AGENCY)} project` : `${esc(item.ref || "")} · on the map since ${fmtDay(item.updatedAt)}`}</div><h1 id="rv-title">${esc(start.data.name || "New project")}</h1></div>
+          ${item.pending ? '<span class="pill2 info">Sent for review</span>' : isNew ? "" : '<span class="pill2 ok">On the map</span>'}
+        </div>
+        ${item.pending ? `<div class="note-box">You sent changes on ${fmtWhen(item.pending.at)}. They are waiting for review by the Durable Solutions Unit. You can still change them: sending again replaces your earlier version.</div>` : ""}
+        <div class="split">
+          <div class="main">${editorHTML(start.data, start.private || {})}</div>
+          <aside class="side">
+            <section class="card" style="overflow:hidden">
+              <div style="padding:14px 18px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)">How it will look on the map</div>
+              <div style="padding:14px" id="pv-card"></div>
+              <div style="padding:0 18px 16px"><button type="button" class="linkish" id="pv-open">Open the full pop-up</button></div>
+            </section>
+            <section class="card ed"><h2>What happens next</h2><p style="margin:0;font-size:14px;line-height:1.5">Your changes go to the Durable Solutions Unit. They check them and publish them to the map, usually within a few working days. See <a href="#/changes">Sent for review</a>.</p></section>
+          </aside>
+        </div>
+        <div class="card bar-actions">
+          <span class="grow"></span>
+          <span class="muted" style="font-size:13px">Nothing changes on the map until DSU publishes</span>
+          <button type="button" class="btn btn-primary" id="b-send">Send to DSU for review</button>
+        </div>`;
+      // the lead organisation stays the agency; the private section is the agency's own focal point
+      const lead = document.getElementById("e-lead");
+      lead.value = item.data.lead || AGENCY; lead.readOnly = true; lead.title = "Projects stay under your agency";
+      const privH = [...app.querySelectorAll(".ed h2")].find((h) => /Private to DSU/.test(h.textContent));
+      if (privH) privH.innerHTML = "Focal point <small>Never published on the map</small>";
+      const ed = bindEditor(state, (v) => {
+        document.getElementById("pv-card").innerHTML = previewCard(v, state.photos);
+        document.getElementById("rv-title").textContent = v.name || "New project";
+      });
+      document.getElementById("pv-open").addEventListener("click", () => openPopup(ed.values(), state.photos));
+      document.getElementById("b-send").addEventListener("click", async (e) => {
+        busy(e.target, true, "Sending");
+        try {
+          const r = await api(`/project/${encodeURIComponent(isNew ? "new" : item.id)}`, { method: "PUT", body: { data: { ...ed.values(), lead: lead.value }, private: ed.priv(), photos: state.photos.map((p) => (p.path ? { path: p.path } : { file: p.file })) } });
+          SF.toast(`${r.ref} sent to DSU for review`);
+          location.hash = "#/changes";
+        } catch (err) { alert(err.message); busy(e.target, false); }
+      });
+    }
+    async function viewChanges() {
+      const { items } = await api("/changes");
+      const st = (i) => i.status === "pending" ? '<span class="pill2 info">Waiting for review</span>' : i.status === "published" ? '<span class="pill2 ok">Published</span>' : '<span class="pill2 mute">Not published</span>';
+      app.innerHTML = `
+        <div><h1>Sent for review</h1><p class="lede2">Changes and new projects you sent to the Durable Solutions Unit, and what happened to them.</p></div>
+        <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>Sent</th><th>Number</th><th>Project</th><th>Type</th><th>Status</th></tr></thead><tbody>
+          ${items.map((i) => `<tr${i.status === "pending" && i.targetId ? ` class="click" data-id="${esc(i.targetId)}"` : ""}><td style="white-space:nowrap">${fmtWhen(i.receivedAt)}</td><td class="ref">${esc(i.ref || "")}</td><td>${esc(i.name)}</td>
+            <td>${i.kind === "new" ? "New project" : "Changes"}</td><td>${st(i)}${i.reviewedAt ? `<br><span class="muted" style="font-size:13px">${fmtDay(i.reviewedAt)}</span>` : ""}</td></tr>`).join("")}
+        </tbody></table>` : `<div class="empty">Nothing sent yet. Open one of your <a href="#/projects">${esc(AGENCY)} projects</a> to suggest changes.</div>`}</div></div>`;
+      app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", () => (location.hash = `#/project/${encodeURIComponent(tr.dataset.id)}`)));
+    }
+
     /* ---------- approved editors ---------- */
     async function viewEditors() {
-      const { items, me } = await api("/editors");
+      const { items, me, leads } = await api("/editors");
+      const agencies = [...new Set([...(leads || []), ...ORGS.map((o) => o.acronym)])].filter(Boolean).sort();
+      const roleText = (i) => (i.role === "agency" ? `${esc(i.agency)} admin` : "DSU admin");
       app.innerHTML = `
-        <div><h1>Approved editors</h1><p class="lede2">Only these emails can sign in. Anyone else is asked to contact the DSWG or their agency focal point. Removing someone signs them out at once.</p></div>
-        <div class="card tbl-card"><div class="tbl-wrap"><table class="adm"><thead><tr><th>Email</th><th>Role</th><th>Added</th><th>Last signed in</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
+        <div><h1>Approved editors</h1><p class="lede2">Only these people can sign in. Anyone else is asked to contact the DSWG or their agency focal point. Removing someone signs them out at once.</p></div>
+        <div class="card tbl-card"><div class="tbl-wrap"><table class="adm"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Can see</th><th>Last signed in</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
           ${items.map((i) => `<tr>
-            <td><b style="font-weight:500">${esc(i.email)}</b>${i.email === me ? ' <span class="pill2 info">You</span>' : ""}</td>
-            <td>DSU admin${i.owner ? ' <span class="pill2 mute">Owner</span>' : ""}</td>
-            <td>${i.owner ? '<span class="muted">Set in the back end</span>' : `${fmtDay(i.added_at)}${i.added_by ? `<br><span class="muted" style="font-size:13px">by ${esc(i.added_by)}</span>` : ""}`}</td>
+            <td><b style="font-weight:500">${esc(i.name || "")}</b>${i.email === me ? ' <span class="pill2 info">You</span>' : ""}</td>
+            <td>${esc(i.email)}</td>
+            <td>${roleText(i)}${i.owner ? ' <span class="pill2 mute">Owner</span>' : ""}</td>
+            <td>${i.role === "agency" ? `${esc(i.agency)} projects only; changes go to the review queue` : "All projects; can publish"}</td>
             <td>${i.last_signin ? fmtWhen(i.last_signin) : '<span class="muted">Not yet</span>'}</td>
-            <td>${i.owner ? "" : `<button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.email)}">Remove</button>`}</td></tr>`).join("")}
+            <td style="white-space:nowrap"><button type="button" class="btn btn-sm" data-edit="${esc(i.email)}">Edit</button>${i.owner ? "" : ` <button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.email)}">Remove</button>`}</td></tr>`).join("")}
         </tbody></table></div></div>
-        <section class="card ed"><h2>Add a DSU admin <small>They can see and edit all projects, and publish to the map</small></h2>
-          <form class="ed-add" id="ed-form"><label class="f">Work email<input class="input" type="email" id="ed-email" required placeholder="name@un.org"></label>
-          <button type="submit" class="btn btn-primary" id="ed-go">Add</button></form>
+        <section class="card ed"><h2 id="ed-title">Add a person</h2>
+          <form class="ed-add" id="ed-form">
+            <label class="f">Name<input class="input" id="ed-name" required placeholder="First and last name"></label>
+            <label class="f">Work email<input class="input" type="email" id="ed-email" required placeholder="name@un.org"></label>
+            <label class="f sm">Role<select class="input" id="ed-role"><option value="agency">Agency admin</option><option value="admin">DSU admin</option></select></label>
+            <label class="f sm" id="ed-agency-wrap">Agency<input class="input" id="ed-agency" list="dl-agencies" placeholder="For example IOM"></label>
+            <button type="submit" class="btn btn-primary" id="ed-go">Add</button>
+            <button type="button" class="btn" id="ed-cancel" hidden>Cancel</button>
+          </form>
+          <datalist id="dl-agencies">${agencies.map((a) => `<option value="${esc(a)}">`).join("")}</datalist>
           <div class="err-line" id="ed-err" role="alert"></div>
-          <small class="muted">Agency editors, who can only edit their own agency's projects, come in the next stage.</small>
+          <small class="muted"><b>Agency admin:</b> sees and edits only their agency's projects (the lead organisation), and can add new ones. Their changes wait in your review queue. <b>DSU admin:</b> sees everything and publishes.</small>
         </section>`;
-      document.getElementById("ed-form").addEventListener("submit", async (e) => {
+      const g = (id) => document.getElementById(id);
+      let editing = null;
+      const syncRole = () => { g("ed-agency-wrap").hidden = g("ed-role").value !== "agency"; };
+      g("ed-role").addEventListener("change", syncRole); syncRole();
+      const reset = () => { editing = null; g("ed-form").reset(); g("ed-email").readOnly = false; g("ed-title").textContent = "Add a person"; g("ed-go").textContent = "Add"; g("ed-cancel").hidden = true; g("ed-role").disabled = false; syncRole(); };
+      g("ed-cancel").addEventListener("click", reset);
+      app.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => {
+        const i = items.find((x) => x.email === b.dataset.edit);
+        editing = i;
+        g("ed-title").textContent = `Edit ${i.name || i.email}`; g("ed-go").textContent = "Save"; g("ed-cancel").hidden = false;
+        g("ed-name").value = i.name || ""; g("ed-email").value = i.email; g("ed-email").readOnly = true;
+        g("ed-role").value = i.role === "agency" ? "agency" : "admin"; g("ed-role").disabled = !!i.owner; g("ed-agency").value = i.agency || "";
+        syncRole(); g("ed-name").focus(); g("ed-form").scrollIntoView({ block: "center" });
+      }));
+      g("ed-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const b = document.getElementById("ed-go"), err = document.getElementById("ed-err");
-        const email = document.getElementById("ed-email").value.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Please enter a valid email address."; return; }
-        busy(b, true, "Adding");
-        try { await api("/editors", { method: "POST", body: { email } }); SF.toast(`${email} added`); route(); }
-        catch (x) { err.textContent = x.message; busy(b, false); }
+        const err = g("ed-err"), b = g("ed-go");
+        const body = { name: g("ed-name").value.trim(), email: g("ed-email").value.trim(), role: g("ed-role").value, agency: g("ed-agency").value.trim() };
+        if (!body.name) { err.textContent = "Please enter the person's name."; return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) { err.textContent = "Please enter a valid email address."; return; }
+        if (body.role === "agency" && !body.agency) { err.textContent = "Choose the agency this person can edit."; return; }
+        err.textContent = ""; busy(b, true, "Saving");
+        try {
+          if (editing) await api(`/editors/${encodeURIComponent(editing.email)}`, { method: "PUT", body });
+          else await api("/editors", { method: "POST", body });
+          SF.toast(`${body.name} ${editing ? "saved" : "added"}`);
+          if (editing && editing.email === me) { const s = SF.auth.get(); if (s) { SF.auth.save({ ...s, name: body.name }); SF.auth.drawButton(); } }
+          route();
+        } catch (x) { err.textContent = x.message; busy(b, false); }
       });
       app.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
         const email = b.dataset.rm;

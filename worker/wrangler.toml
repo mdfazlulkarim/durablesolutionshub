@@ -27,5 +27,6 @@ COMMIT_EMAIL = "fozlulkarim@gmail.com"
 GITHUB_API = "https://api.github.com"
 # People who can always sign in as DSU admin (comma separated). Others are added on the Approved editors page.
 ADMIN_EMAILS = "md.karim@un.org"
+ADMIN_NAMES = "Md Fazlul Karim"
 MAIL_FROM = "Durable Solutions Hub <no-reply@durablesolutionshub.org>"
 CONTACT_EMAIL = "dswg.sd@undp.org"
