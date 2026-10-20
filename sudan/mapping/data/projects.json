@@ -1,5 +1,5 @@
 {
- "lastUpdated": "2026-10-19",
+ "lastUpdated": "2026-10-20",
  "projects": [
   {
    "id": "iom-ai-powered-preparedness-and-anticipatory-actions",
@@ -22,7 +22,7 @@
    "end": "2027-03-14",
    "reportedStatus": "Ongoing",
    "budget": 322283.56,
-   "share": 1.0,
+   "share": 1,
    "dsFunding": 322283.56,
    "donor": "Japan Ministry of Foreign Affairs",
    "people": {
@@ -35,7 +35,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-013"
+   "ref": "SD-034-IOM-26-27"
   },
   {
    "id": "iom-austrian-contribution-to-sudan-and-neighbouring-countries-crisis-r",
@@ -75,7 +75,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-006"
+   "ref": "SD-009-IOM-25-26"
   },
   {
    "id": "iom-cooperation-on-migration-and-partnership-to-achieve-sustainable-so",
@@ -103,7 +103,7 @@
    "start": "2024-01-01",
    "end": "2027-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 4732048.0,
+   "budget": 4732048,
    "share": 0.2082,
    "dsFunding": 985198.14,
    "donor": "Netherlands Ministry of Foreign Affairs",
@@ -117,7 +117,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-003"
+   "ref": "SD-003-IOM-24-27"
   },
   {
    "id": "iom-integrated-multisector-support-programme-for-displaced-and-vulnera",
@@ -139,7 +139,7 @@
    "start": "2024-04-01",
    "end": "2026-06-30",
    "reportedStatus": "Ended",
-   "budget": 13615023.0,
+   "budget": 13615023,
    "share": 0.0803,
    "dsFunding": 1092991.26,
    "donor": "ECHO",
@@ -153,7 +153,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-004"
+   "ref": "SD-004-IOM-24-26"
   },
   {
    "id": "iom-legal-assistance",
@@ -185,9 +185,9 @@
    "start": "2026-01-21",
    "end": "2026-06-25",
    "reportedStatus": "Ended",
-   "budget": 30000.0,
+   "budget": 30000,
    "share": 0.2,
-   "dsFunding": 6000.0,
+   "dsFunding": 6000,
    "donor": "EU (MPRR)",
    "people": {
     "total": 600,
@@ -199,7 +199,7 @@
    },
    "remarks": "All are stranded migrants",
    "photos": [],
-   "ref": "IOM-012"
+   "ref": "SD-032-IOM-26-26"
   },
   {
    "id": "iom-liechtenstein-contribution-to-sudan-crp-2026",
@@ -223,9 +223,9 @@
    "start": "2026-01-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 130208.0,
+   "budget": 130208,
    "share": 0.923,
-   "dsFunding": 120177.0,
+   "dsFunding": 120177,
    "donor": "Government of Liechtenstein",
    "people": {
     "total": 7000,
@@ -237,7 +237,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-010"
+   "ref": "SD-022-IOM-26-26"
   },
   {
    "id": "iom-remote-adjudication-interview-support-for-family-class-applicants",
@@ -259,9 +259,9 @@
    "start": "2020-10-10",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 20330.0,
-   "share": 1.0,
-   "dsFunding": 20330.0,
+   "budget": 20330,
+   "share": 1,
+   "dsFunding": 20330,
    "donor": "Government of Canada",
    "people": {
     "total": 161,
@@ -273,7 +273,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-001"
+   "ref": "SD-001-IOM-20-26"
   },
   {
    "id": "iom-strengthening-the-security-climate-nexus-in-gedaref-sudan",
@@ -298,9 +298,9 @@
    "start": "2022-11-18",
    "end": "2026-11-18",
    "reportedStatus": "Ongoing",
-   "budget": 3000000.0,
-   "share": 1.0,
-   "dsFunding": 3000000.0,
+   "budget": 3000000,
+   "share": 1,
+   "dsFunding": 3000000,
    "donor": "Peacebuilding Fund",
    "people": {
     "total": 140000,
@@ -312,7 +312,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-002"
+   "ref": "SD-002-IOM-22-26"
   },
   {
    "id": "iom-sudan-integrated-social-sector-infrastructure-rehabilitation-proje",
@@ -340,9 +340,9 @@
    "start": "2025-09-01",
    "end": "2027-08-31",
    "reportedStatus": "Ongoing",
-   "budget": 62187036.0,
-   "share": 1.0,
-   "dsFunding": 62187036.0,
+   "budget": 62187036,
+   "share": 1,
+   "dsFunding": 62187036,
    "donor": "African Development Bank",
    "people": {
     "total": 2147270,
@@ -354,7 +354,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-009"
+   "ref": "SD-019-IOM-25-27"
   },
   {
    "id": "iom-support-to-a-family-assistance-programme-facilitating-family-reuni",
@@ -377,7 +377,7 @@
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
    "budget": 179477.41,
-   "share": 1.0,
+   "share": 1,
    "dsFunding": 179477.41,
    "donor": "German Federal Foreign Office",
    "people": {
@@ -390,7 +390,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-011"
+   "ref": "SD-023-IOM-26-26"
   },
   {
    "id": "iom-supporting-evidence-based-programming-for-idps-returnee-communitie",
@@ -412,9 +412,9 @@
    "start": "2025-05-01",
    "end": "2026-04-30",
    "reportedStatus": "Ended",
-   "budget": 2000000.0,
+   "budget": 2000000,
    "share": 0.25,
-   "dsFunding": 500000.0,
+   "dsFunding": 500000,
    "donor": "Sudan Humanitarian Fund",
    "people": {
     "total": null,
@@ -426,7 +426,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-007"
+   "ref": "SD-014-IOM-25-26"
   },
   {
    "id": "iom-supporting-the-multi-sectoral-crisis-response-in-sudan",
@@ -448,7 +448,7 @@
    "start": "2024-04-15",
    "end": "2026-09-30",
    "reportedStatus": "Ongoing",
-   "budget": 24600000.0,
+   "budget": 24600000,
    "share": 0.0278,
    "dsFunding": 683261.75,
    "donor": "US Government (BHA)",
@@ -462,7 +462,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-005"
+   "ref": "SD-005-IOM-24-26"
   },
   {
    "id": "iom-swiss-contribution-to-core-dtm-activities",
@@ -484,9 +484,9 @@
    "start": "2026-07-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 635324.0,
+   "budget": 635324,
    "share": 0.25,
-   "dsFunding": 158831.0,
+   "dsFunding": 158831,
    "donor": "Swiss Agency for Development and Cooperation (SDC)",
    "people": {
     "total": null,
@@ -498,7 +498,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-014"
+   "ref": "SD-037-IOM-26-26"
   },
   {
    "id": "iom-the-sustainable-urban-integration-of-displacement-affected-communi",
@@ -523,9 +523,9 @@
    "start": "2025-07-28",
    "end": "2028-04-30",
    "reportedStatus": "Ongoing",
-   "budget": 1334254.0,
-   "share": 1.0,
-   "dsFunding": 1334254.0,
+   "budget": 1334254,
+   "share": 1,
+   "dsFunding": 1334254,
    "donor": "UNOPS / Cities Alliance",
    "people": {
     "total": 565988,
@@ -537,7 +537,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "IOM-008"
+   "ref": "SD-018-IOM-25-28"
   },
   {
    "id": "undp-addressing-life-saving-access-to-solar-water-provision-in-madani-",
@@ -580,7 +580,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-010"
+   "ref": "SD-016-UNDP-25-26"
   },
   {
    "id": "undp-addressing-the-urgent-needs-of-idps-and-host-communities-to-stren",
@@ -628,7 +628,7 @@
    },
    "remarks": "Budget converted from EUR 1,000,000 at the UN operational rate of 15 October 2026.",
    "photos": [],
-   "ref": "UNDP-006"
+   "ref": "SD-008-UNDP-24-27"
   },
   {
    "id": "undp-advancing-human-security-through-the-hdp-nexus-approach-in-crisis",
@@ -656,7 +656,7 @@
    "start": "2026-03-01",
    "end": "2027-03-31",
    "reportedStatus": "Ongoing",
-   "budget": 1496767.0,
+   "budget": 1496767,
    "share": 0.75,
    "dsFunding": 1122575.25,
    "donor": "Japan Supplementary Fund",
@@ -670,7 +670,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-014"
+   "ref": "SD-033-UNDP-26-27"
   },
   {
    "id": "undp-cash-for-work-assistance-to-support-returnees",
@@ -709,7 +709,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-001"
+   "ref": "SD-041-UNDP-00-00"
   },
   {
    "id": "undp-catalyzing-wash-assistance-for-health-and-gender-equality-in-suda",
@@ -743,9 +743,9 @@
    "start": "2024-10-01",
    "end": "2026-02-28",
    "reportedStatus": "Ended",
-   "budget": 3500000.0,
+   "budget": 3500000,
    "share": 0.25,
-   "dsFunding": 875000.0,
+   "dsFunding": 875000,
    "donor": "King Salman Humanitarian Aid & Relief Centre (KSRelief)",
    "people": {
     "total": null,
@@ -757,7 +757,7 @@
    },
    "remarks": "Name in the agreement: Support and Empowerment in the Water and Sanitation Sector in Sudan.",
    "photos": [],
-   "ref": "UNDP-004"
+   "ref": "SD-006-UNDP-24-26"
   },
   {
    "id": "undp-employment-and-self-employment-through-strengthening-food-and-liv",
@@ -787,9 +787,9 @@
    "start": "2024-10-01",
    "end": "2026-09-30",
    "reportedStatus": "Ended",
-   "budget": 5000000.0,
+   "budget": 5000000,
    "share": 0.75,
-   "dsFunding": 3750000.0,
+   "dsFunding": 3750000,
    "donor": "Education Above All, Qatar Fund for Development",
    "people": {
     "total": null,
@@ -801,7 +801,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-005"
+   "ref": "SD-007-UNDP-24-26"
   },
   {
    "id": "undp-enhancing-access-to-water-infrastructure-for-idps-refugees-and-ho",
@@ -830,9 +830,9 @@
    "start": "2025-04-01",
    "end": "2026-04-30",
    "reportedStatus": "Ended",
-   "budget": 2000000.0,
+   "budget": 2000000,
    "share": 0.25,
-   "dsFunding": 500000.0,
+   "dsFunding": 500000,
    "donor": "Kuwait Fund for Arab Economic Development (KFAED)",
    "people": {
     "total": null,
@@ -844,7 +844,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-009"
+   "ref": "SD-013-UNDP-25-26"
   },
   {
    "id": "undp-powering-sudan-s-agriculture-renewable-water-solutions-for-sustai",
@@ -876,9 +876,9 @@
    "start": "2025-11-01",
    "end": "2027-04-30",
    "reportedStatus": "Ongoing",
-   "budget": 2000000.0,
+   "budget": 2000000,
    "share": 0.75,
-   "dsFunding": 1500000.0,
+   "dsFunding": 1500000,
    "donor": "Kuwait Fund for Arab Economic Development (KFAED)",
    "people": {
     "total": null,
@@ -890,7 +890,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-012"
+   "ref": "SD-020-UNDP-25-27"
   },
   {
    "id": "undp-rehabilitation-and-upgrading-of-3-handpumps-to-mini-waters",
@@ -928,7 +928,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-002"
+   "ref": "SD-042-UNDP-00-00"
   },
   {
    "id": "undp-rehabilitation-of-two-health-centres",
@@ -966,7 +966,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-003"
+   "ref": "SD-043-UNDP-00-00"
   },
   {
    "id": "undp-relief-employment-and-vital-infrastructure-for-the-vulnerable-in-",
@@ -1003,9 +1003,9 @@
    "start": "2026-07-01",
    "end": "2027-06-30",
    "reportedStatus": "Ongoing",
-   "budget": 6000000.0,
+   "budget": 6000000,
    "share": 0.75,
-   "dsFunding": 4500000.0,
+   "dsFunding": 4500000,
    "donor": "Republic of Korea (RoK)",
    "people": {
     "total": null,
@@ -1017,7 +1017,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-015"
+   "ref": "SD-038-UNDP-26-27"
   },
   {
    "id": "undp-strengthening-the-food-security-and-livelihoods-of-idps-and-host-",
@@ -1049,9 +1049,9 @@
    "start": "2025-03-01",
    "end": "2026-03-31",
    "reportedStatus": "Ended",
-   "budget": 1000000.0,
+   "budget": 1000000,
    "share": 0.75,
-   "dsFunding": 750000.0,
+   "dsFunding": 750000,
    "donor": "Government of Japan",
    "people": {
     "total": null,
@@ -1063,7 +1063,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-008"
+   "ref": "SD-012-UNDP-25-26"
   },
   {
    "id": "undp-strengthening-the-resilience-of-idps-refugees-and-vulnera-kuwait",
@@ -1094,9 +1094,9 @@
    "start": "2025-11-01",
    "end": "2027-10-31",
    "reportedStatus": "Ongoing",
-   "budget": 2000000.0,
+   "budget": 2000000,
    "share": 0.75,
-   "dsFunding": 1500000.0,
+   "dsFunding": 1500000,
    "donor": "Kuwait Fund for Arab Economic Development (KFAED)",
    "people": {
     "total": null,
@@ -1108,7 +1108,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNDP-013"
+   "ref": "SD-021-UNDP-25-27"
   },
   {
    "id": "undp-strengthening-the-resilience-of-idps-refugees-and-vulnera-sdc",
@@ -1154,7 +1154,7 @@
    },
    "remarks": "Budget converted from CHF 5,000,000 at the UN operational rate of 15 October 2026. Includes a top-up that added Blue Nile and Central Darfur.",
    "photos": [],
-   "ref": "UNDP-011"
+   "ref": "SD-017-UNDP-25-27"
   },
   {
    "id": "undp-supporting-durable-solutions-in-sudan-multi-year-capacity-to-oper",
@@ -1181,7 +1181,7 @@
    "end": "2027-12-31",
    "reportedStatus": "Ongoing",
    "budget": 1830528.85,
-   "share": 1.0,
+   "share": 1,
    "dsFunding": 1830528.85,
    "donor": "Swiss Agency for Development and Cooperation (SDC), UNHCR",
    "people": {
@@ -1194,7 +1194,7 @@
    },
    "remarks": "Budget converted from CHF 1,523,000 at the UN operational rate of 15 October 2026.",
    "photos": [],
-   "ref": "UNDP-007"
+   "ref": "SD-010-UNDP-25-27"
   },
   {
    "id": "unfpa-benims-dhis2-health-information-management",
@@ -1227,7 +1227,7 @@
    "start": "2026-01-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": "UNFPA",
@@ -1241,7 +1241,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-005"
+   "ref": "SD-026-UNFPA-26-26"
   },
   {
    "id": "unfpa-combating-and-responding-to-gbv-in-sudan",
@@ -1284,7 +1284,7 @@
    "start": "2025-05-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": null,
@@ -1298,7 +1298,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-001"
+   "ref": "SD-015-UNFPA-25-26"
   },
   {
    "id": "unfpa-community-midwives-cash-voucher-assistance-program",
@@ -1329,7 +1329,7 @@
    "start": "2026-05-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": "UNFPA",
@@ -1343,7 +1343,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-004"
+   "ref": "SD-035-UNFPA-26-26"
   },
   {
    "id": "unfpa-gender-and-disability-effects-of-the-regional-crisis-on-inclusio",
@@ -1379,7 +1379,7 @@
    "start": "2026-09-01",
    "end": "2027-06-30",
    "reportedStatus": "Ongoing",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": "Joint SDG Fund",
@@ -1393,7 +1393,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-010"
+   "ref": "SD-039-UNFPA-26-27"
   },
   {
    "id": "unfpa-joint-programme-on-elimination-of-fgm",
@@ -1437,7 +1437,7 @@
    "start": "2026-01-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 137617.0,
+   "budget": 137617,
    "share": null,
    "dsFunding": null,
    "donor": null,
@@ -1451,7 +1451,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-002"
+   "ref": "SD-024-UNFPA-26-26"
   },
   {
    "id": "unfpa-medical-equipment-for-health-facilities",
@@ -1500,7 +1500,7 @@
    "start": "2026-01-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 1000000.0,
+   "budget": 1000000,
    "share": null,
    "dsFunding": null,
    "donor": "Sudan Humanitarian Fund, ECHO",
@@ -1514,7 +1514,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-006"
+   "ref": "SD-027-UNFPA-26-26"
   },
   {
    "id": "unfpa-midwifery-schools",
@@ -1545,7 +1545,7 @@
    "start": "2026-01-01",
    "end": "2026-12-31",
    "reportedStatus": "Ongoing",
-   "budget": 200000.0,
+   "budget": 200000,
    "share": null,
    "dsFunding": null,
    "donor": "Government of Canada",
@@ -1559,7 +1559,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-007"
+   "ref": "SD-028-UNFPA-26-26"
   },
   {
    "id": "unfpa-rehabilitation-of-health-facilities",
@@ -1606,7 +1606,7 @@
    "start": "2026-01-01",
    "end": "2027-09-30",
    "reportedStatus": "Ongoing",
-   "budget": 1500000.0,
+   "budget": 1500000,
    "share": null,
    "dsFunding": null,
    "donor": "Norway, Sida",
@@ -1620,7 +1620,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-008"
+   "ref": "SD-029-UNFPA-26-27"
   },
   {
    "id": "unfpa-solar-systems-for-health-facilities",
@@ -1669,7 +1669,7 @@
    "start": "2026-01-01",
    "end": "2027-09-30",
    "reportedStatus": "Ongoing",
-   "budget": 700000.0,
+   "budget": 700000,
    "share": null,
    "dsFunding": null,
    "donor": "Norway, Sida",
@@ -1683,7 +1683,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-009"
+   "ref": "SD-030-UNFPA-26-27"
   },
   {
    "id": "unfpa-train-midwives-on-portable-ultrasound-with-digital-health",
@@ -1711,7 +1711,7 @@
    "start": "2026-01-01",
    "end": "2026-06-30",
    "reportedStatus": "Ended",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": "Government of Japan",
@@ -1725,7 +1725,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-003"
+   "ref": "SD-025-UNFPA-26-26"
   },
   {
    "id": "unfpa-women-architects-of-recovery",
@@ -1758,7 +1758,7 @@
    "start": "2026-10-30",
    "end": "2027-06-30",
    "reportedStatus": "Ongoing",
-   "budget": 100000.0,
+   "budget": 100000,
    "share": null,
    "dsFunding": null,
    "donor": null,
@@ -1772,7 +1772,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNFPA-011"
+   "ref": "SD-040-UNFPA-26-27"
   },
   {
    "id": "unhcr-prospects-project-protection-education-economic-inclusion-and-cr",
@@ -1805,9 +1805,9 @@
    "start": "2025-01-01",
    "end": "2027-06-30",
    "reportedStatus": "Ongoing",
-   "budget": 25000000.0,
+   "budget": 25000000,
    "share": 0.9,
-   "dsFunding": 22000000.0,
+   "dsFunding": 22000000,
    "donor": "Government of the Netherlands",
    "people": {
     "total": null,
@@ -1819,7 +1819,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNHCR-001"
+   "ref": "SD-011-UNHCR-25-27"
   },
   {
    "id": "unhcr-sudan-eu-igad-platform-programme-kassala-state",
@@ -1864,7 +1864,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNHCR-003"
+   "ref": "SD-036-UNHCR-26-27"
   },
   {
    "id": "unhcr-unhcr-project-funded-by-mastercard-foundation",
@@ -1919,7 +1919,7 @@
    },
    "remarks": null,
    "photos": [],
-   "ref": "UNHCR-002"
+   "ref": "SD-031-UNHCR-26-30"
   }
  ]
 }
