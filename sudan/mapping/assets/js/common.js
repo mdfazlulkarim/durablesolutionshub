@@ -25,6 +25,9 @@ SF.config = {
 
 /* Test mode: turned on from test.html, in one browser only. Projects sent from that browser go to the
    review queue on the back end; everyone else keeps using email until apiUrl above is set. */
+// Show the short address (…/sudan/mapping/) instead of …/index.html
+try { if (/\/index\.html$/.test(location.pathname)) history.replaceState(null, "", location.pathname.replace(/index\.html$/, "") + location.search + location.hash); } catch (e) { /* not important */ }
+
 SF.TEST_API = "https://solutions-footprint.ds-sudan.workers.dev";
 try {
   if (localStorage.getItem("sf-test-mode") === "on") {
@@ -303,14 +306,14 @@ SF.renderHeader = (active) => {
   const el = document.getElementById("site-header");
   if (!el) return;
   const nav = [
-    { key: "map", href: "index.html", label: "Map" },
+    { key: "map", href: "./", label: "Map" },
     // Phase 2 and 3 views stay hidden until they are released:
     // { key: "projects", href: "projects.html", label: "Projects" },
     // { key: "gaps", href: "gaps.html", label: "Gaps" },
     { key: "about", href: "about.html", label: "About the data" },
     { key: "mine", href: "my-submissions.html", label: "My submissions" },
   ];
-  const action = active === "add" ? `<a class="btn" href="index.html">Back to the map</a>` : SF.addMenuHTML("add");
+  const action = active === "add" ? `<a class="btn" href="./">Back to the map</a>` : SF.addMenuHTML("add");
   el.className = "site-header";
   if (SF.testMode && !document.getElementById("test-bar")) {
     el.insertAdjacentHTML("beforebegin", `<div class="test-bar" id="test-bar"><b>Test mode, in this browser only.</b> Projects you send go to the new review queue, not by email. <a href="test.html">Test page</a> · <button type="button" id="test-off">Leave test mode</button></div>`);
@@ -318,7 +321,7 @@ SF.renderHeader = (active) => {
   }
   el.innerHTML = `
     <div class="header-inner">
-      <a class="brand" href="index.html" aria-label="Solutions Footprint home">
+      <a class="brand" href="./" aria-label="Solutions Footprint home">
         <img class="brand-logo" src="assets/img/un-sudan-logo.png" alt="United Nations Sudan" width="153" height="42">
         <span class="brand-divider" aria-hidden="true"></span>
         <span>
@@ -400,7 +403,7 @@ SF.auth = {
   signOut() {
     SF.auth.clear();
     SF.toast("Signed out");
-    if (/manage\.html$/.test(location.pathname)) location.href = "index.html";
+    if (/manage\.html$/.test(location.pathname)) location.href = "./";
     else SF.auth.drawButton();
   },
   // The sign-in window: email, then the code from the email

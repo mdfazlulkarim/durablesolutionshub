@@ -48,7 +48,7 @@
     function showLogin(msg) {
       document.getElementById("nav").hidden = true;
       if (!SF.config.authUrl) {
-        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>Sign-in is not switched on for this site yet.</p><a class="btn" href="index.html">Back to the map</a></div>`;
+        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>Sign-in is not switched on for this site yet.</p><a class="btn" href="./">Back to the map</a></div>`;
         return;
       }
       app.innerHTML = `<div class="card gate"><h1>Manage projects</h1>
@@ -770,7 +770,7 @@
         const email = b.dataset.rm;
         if (!confirm(`Remove ${email}? They will be signed out and will not be able to sign in again.`)) return;
         busy(b, true, "Removing");
-        try { await api(`/editors/${encodeURIComponent(email)}`, { method: "DELETE" }); SF.toast(`${email} removed`); if (email === me) { SF.auth.clear(); location.href = "index.html"; } else route(); }
+        try { await api(`/editors/${encodeURIComponent(email)}`, { method: "DELETE" }); SF.toast(`${email} removed`); if (email === me) { SF.auth.clear(); location.href = "./"; } else route(); }
         catch (x) { alert(x.message); busy(b, false); }
       }));
     }
