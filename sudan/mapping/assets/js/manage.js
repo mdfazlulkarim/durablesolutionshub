@@ -347,7 +347,7 @@
       const dn = (o) => (o.donors && o.donors.length ? o.donors : o.donor ? [{ name: o.donor, amount: null }] : []).map((x) => `${x.name}|${x.amount ?? ""}`).join(";");
       return Object.keys(FIELD_LABELS).filter((k) => (k === "donors" ? dn(a) !== dn(b) : String(norm(k, a[k])) !== String(norm(k, b[k]))));
     }
-    const show = (k, v) => k === "start" || k === "end" ? SF.fmtMonth(SF.parseDate(v)) : k === "share" ? SF.fmtPct(v) : k === "budget" ? SF.fmtUSD(v) : k === "people" ? (v && v.total != null ? SF.fmtInt(v.total) : "") : k === "donors" ? (v || []).map((x) => (x.amount != null ? `${x.name}: ${SF.fmtUSD(x.amount)}` : x.name)).join(", ") : Array.isArray(v) ? v.join(", ") : v === true ? "Yes" : v === false ? "No" : v ?? "";
+    const show = (k, v) => k === "start" || k === "end" ? SF.fmtMonth(SF.parseDate(v)) : k === "share" ? SF.fmtPct(v) : k === "budget" ? SF.fmtUSD(v) : k === "people" ? (v ? [["total", "Total"], ...SF.TARGET_GROUPS.map((t) => [t.key, t.label])].filter(([g]) => v[g] != null).map(([g, l]) => `${l} ${SF.fmtInt(v[g])}`).join(", ") : "") : k === "donors" ? (v || []).map((x) => (x.amount != null ? `${x.name}: ${SF.fmtUSD(x.amount)}` : x.name)).join(", ") : Array.isArray(v) ? v.join(", ") : v === true ? "Yes" : v === false ? "No" : v ?? "";
 
     /* ---------- review one submission ---------- */
     async function viewReview(id) {
@@ -358,6 +358,28 @@
       const state = { peopleSex: s.data.peopleSex || null, owner: s.id, photos: [...keep.map((p) => ({ path: p, url: SITE + p, label: "On the map" })), ...s.photos.map((p) => ({ ...p, label: SF.fmtSize(p.size || 0) }))], deleteFileNow: false };
       let asUpdateOf = null;
       const dup = s.checks.find((c) => c.kind === "duplicate");
+      // A short summary at the top: what the sender changed, or what the new project is
+      const from = s.source === "agency" ? `${s.byName || s.by || ""} (${s.data.lead} admin)` : s.source === "excel" ? `an Excel upload${s.row ? `, row ${s.row}` : ""}` : "the online form";
+      let summary;
+      if (isCorr) {
+        const ch = diff(s.data, s.current.data);
+        summary = `<section class="card ed rv-sum"><h2>What changed <small>Sent by ${esc(from)} on ${fmtWhen(s.receivedAt)}</small></h2>
+          ${ch.length ? `<table class="chg-t"><tbody>${ch.map((k) => `<tr><th>${esc(FIELD_LABELS[k])}</th><td><span class="chg-from">${esc(show(k, s.current.data[k])) || "<i>empty</i>"}</span> <span aria-hidden="true">→</span> <span class="chg-to">${esc(show(k, s.data[k])) || "<i>empty</i>"}</span></td></tr>`).join("")}</tbody></table>`
+            : `<p class="muted" style="margin:0">No field differs from the version on the map${s.photos.length ? ", apart from new photos" : ""}.</p>`}
+          ${s.photos.length ? `<p style="margin:8px 0 0;font-size:14px">${s.photos.length} new photo${s.photos.length === 1 ? "" : "s"} sent.</p>` : ""}</section>`;
+      } else {
+        const d = s.data;
+        const where = d.nationwide ? "Nationwide" : (d.states || []).join(", ");
+        summary = `<section class="card ed rv-sum"><h2>New project <small>Sent by ${esc(from)} on ${fmtWhen(s.receivedAt)}</small></h2>
+          <table class="chg-t"><tbody>
+            <tr><th>Lead</th><td>${esc(d.lead || "")}${d.leadName ? `, ${esc(d.leadName)}` : ""}</td></tr>
+            <tr><th>Where</th><td>${esc(where)}${(d.localities || []).length ? ` (${esc(d.localities.join(", "))})` : ""}</td></tr>
+            <tr><th>When</th><td>${esc(fmtDates(d.start, d.end))}</td></tr>
+            <tr><th>Budget</th><td>${d.budget != null ? esc(SF.fmtUSD(d.budget)) : "<i>empty</i>"}${d.share != null ? `, ${esc(SF.fmtPct(d.share))} towards durable solutions` : ""}</td></tr>
+            <tr><th>People reached</th><td>${esc(show("people", d.people)) || "<i>empty</i>"}</td></tr>
+            <tr><th>IASC criteria</th><td>${esc((d.criteria || []).map((n) => (SF.CRITERIA.find((c) => c.n === Number(n)) || { short: n }).short).join(", "))}</td></tr>
+          </tbody></table></section>`;
+      }
       app.innerHTML = `
         <a href="#/queue">Back to the queue</a>
         <div class="row between">
@@ -365,6 +387,7 @@
           <h1 id="rv-title">${esc(s.data.name || "")}</h1></div>
           <span class="pill2 ${pending ? "info" : s.status === "published" ? "ok" : "mute"}">${pending ? (isCorr ? "Correction awaiting review" : "Awaiting review") : s.status === "published" ? `Published ${fmtDay(s.reviewedAt)}` : `Not published ${fmtDay(s.reviewedAt)}`}</span>
         </div>
+        ${summary}
         <div class="split">
           <div class="main">${editorHTML(s.data, s.private, { note: s.note || "" })}</div>
           <aside class="side">
