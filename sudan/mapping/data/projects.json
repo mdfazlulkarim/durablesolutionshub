@@ -1,5 +1,5 @@
 {
- "lastUpdated": "2026-10-20",
+ "lastUpdated": "2026-10-21",
  "projects": [
   {
    "id": "iom-ai-powered-preparedness-and-anticipatory-actions",
@@ -906,18 +906,21 @@
    "states": [
     "Blue Nile"
    ],
-   "localities": [],
+   "localities": [
+    "Baw"
+   ],
    "criteria": [
     2
    ],
    "coordination": "Durable Solutions Working Group (DSWG)",
    "start": null,
    "end": null,
-   "reportedStatus": null,
+   "reportedStatus": "Ongoing",
    "budget": null,
    "share": null,
    "dsFunding": null,
    "donor": null,
+   "donors": [],
    "people": {
     "total": null,
     "idps": null,
@@ -926,6 +929,10 @@
     "host": null,
     "other": null
    },
+   "femaleShare": null,
+   "pwdShare": null,
+   "pwdFemaleShare": null,
+   "peopleSex": null,
    "remarks": null,
    "photos": [],
    "ref": "SD-042-UNDP-00-00"
