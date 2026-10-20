@@ -187,7 +187,7 @@
       <section class="card ed"><h2>Where</h2>
         <label class="row" style="gap:8px;font-size:14px" data-k="nationwide"><input type="checkbox" id="e-nationwide"${d.nationwide ? " checked" : ""}> Nationwide</label>
         <div class="f" data-k="states" id="e-states-wrap">States${pills("e-states", SF.STATES, d.states)}</div>
-        <label class="f" data-k="localities">Localities<textarea class="input" id="e-localities" rows="2">${esc((d.localities || []).join("; "))}</textarea><small id="loc-check">Separate with semicolons (;)</small></label>
+        <div class="f" data-k="localities">Localities<small id="loc-check">Choose the states first; their localities appear here.</small><div id="e-loc-groups" data-start="${esc(JSON.stringify(d.localities || []))}"></div></div>
       </section>
       <section class="card ed"><h2>IASC criteria and coordination</h2>
         <div class="f" data-k="criteria">IASC criteria${pills("e-criteria", SF.CRITERIA.map((c) => ({ value: c.n, cls: "crit-opt2", html: `<span class="ci" style="background:${c.color}">${SF.critIcon(c.n)}</span> ${c.n}. ${esc(c.short)}` })), d.criteria)}</div>
@@ -239,7 +239,7 @@
           orgType: g("e-orgType").value || null, lead: g("e-lead").value.trim(), leadName: g("e-leadName").value.trim() || undefined,
           leadership: checked("e-leadership"), partners: splitList(g("e-partners").value), partnerTypes: [],
           nationwide: g("e-nationwide").checked, states: g("e-nationwide").checked ? [] : checked("e-states"),
-          localities: g("e-nationwide").checked ? [] : splitList(g("e-localities").value), criteria: checked("e-criteria").map(Number),
+          localities: g("e-nationwide").checked ? [] : checked("e-loc"), criteria: checked("e-criteria").map(Number),
           coordination: g("e-coordination").value.trim() || null,
           start: start ? `${start}-01` : null, end: end ? `${end}-01` : null, reportedStatus: g("e-status").value || null,
           budget: num(g("e-budget").value), share: share != null ? Math.min(100, share) / 100 : null,
@@ -261,10 +261,33 @@
         const grp = SF.TARGET_GROUPS.map((t) => v.people[t.key]).filter((x) => x != null);
         if (grp.length) g("e-pp-total").value = grp.reduce((x, y) => x + y, 0);
         g("e-states-wrap").style.opacity = v.nationwide ? 0.45 : 1;
-        const known = new Set(v.states.flatMap((s) => LOCALITIES[s] || []));
-        const unknown = v.localities.filter((l) => !known.has(l));
-        g("loc-check").innerHTML = unknown.length && v.states.length ? `<span style="color:var(--warn-ink)">Not in the OCHA list for the chosen states: ${esc(unknown.join(", "))}</span>` : "Separate with semicolons (;)";
         onChange && onChange(v);
+      }
+      // Localities: a tick list for each chosen state (OCHA admin 2 names), as on the form.
+      // Names that are not in the OCHA list are kept in an extra group, so nothing is lost.
+      let locKey = "";
+      function drawLocalities(force) {
+        const host = g("e-loc-groups");
+        const nw = g("e-nationwide").checked;
+        const sts = nw ? [] : checked("e-states");
+        const key = `${nw}|${sts.join(",")}`;
+        if (key === locKey && !force) return;
+        locKey = key;
+        const chosen = host.dataset.start ? JSON.parse(host.dataset.start) : checked("e-loc");
+        delete host.dataset.start;
+        const known = new Set(sts.flatMap((st) => LOCALITIES[st] || []));
+        const other = chosen.filter((l) => !known.has(l));
+        const box = (l, st) => `<label><input type="checkbox" name="e-loc" value="${esc(l)}" data-state="${esc(st)}"${chosen.includes(l) ? " checked" : ""}> ${esc(l)}</label>`;
+        host.innerHTML = sts.map((st) => `<fieldset class="loc-group"><legend>${esc(st)}</legend>
+            <p class="loc-tools"><button type="button" class="link-btn" data-all="${esc(st)}">Select all</button> &nbsp; <button type="button" class="link-btn" data-none="${esc(st)}">Clear</button></p>
+            <div class="loc-grid">${(LOCALITIES[st] || []).map((l) => box(l, st)).join("")}</div></fieldset>`).join("") +
+          (other.length && !nw ? `<fieldset class="loc-group"><legend>Not in the OCHA list for the chosen states</legend><div class="loc-grid">${other.map((l) => box(l, "_other")).join("")}</div></fieldset>` : "");
+        g("loc-check").textContent = nw ? "Localities cannot be chosen for nationwide projects." : sts.length ? "Tick the localities where the project works." : "Choose the states first; their localities appear here.";
+        host.querySelectorAll("[data-all],[data-none]").forEach((b) => b.addEventListener("click", () => {
+          const st = b.dataset.all || b.dataset.none;
+          host.querySelectorAll(`input[data-state="${CSS.escape(st)}"]`).forEach((i) => (i.checked = !!b.dataset.all));
+          refresh();
+        }));
       }
       // photos
       function drawPhotos() {
@@ -290,7 +313,8 @@
       drawPhotos();
       const host = document.querySelector(".split");
       host.addEventListener("input", refresh);
-      host.addEventListener("change", refresh);
+      host.addEventListener("change", (e) => { if (e.target.name === "e-states" || e.target.id === "e-nationwide") drawLocalities(); refresh(); });
+      drawLocalities(true);
       refresh();
       return { values, priv, refresh };
     }
