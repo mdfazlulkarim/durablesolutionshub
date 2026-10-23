@@ -29,6 +29,7 @@ SF.config = {
 try { if (/\/index\.html$/.test(location.pathname)) history.replaceState(null, "", location.pathname.replace(/index\.html$/, "") + location.search + location.hash); } catch (e) { /* not important */ }
 
 SF.TEST_API = "https://solutions-footprint.ds-sudan.workers.dev";
+SF.themePages = /github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
 try {
   if (localStorage.getItem("sf-test-mode") === "on") {
     if (!SF.config.apiUrl) SF.config.apiUrl = SF.TEST_API;
@@ -311,6 +312,8 @@ SF.renderHeader = (active) => {
     // { key: "projects", href: "projects.html", label: "Projects" },
     // { key: "gaps", href: "gaps.html", label: "Gaps" },
     { key: "about", href: "about.html", label: "About the data" },
+    // Theme pages live on the git page only (mdfazlulkarim.github.io)
+    ...(SF.themePages ? [{ key: "women", href: "women.html", label: "Women and girls" }] : []),
     { key: "mine", href: "my-submissions.html", label: "My submissions" },
   ];
   const action = active === "add" ? `<a class="btn" href="./">Back to the map</a>` : SF.addMenuHTML("add");

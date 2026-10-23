@@ -34,3 +34,5 @@ MAIL_FROM = "Durable Solutions Hub <no-reply@durablesolutionshub.org>"
 CONTACT_EMAIL = "dswg.sd@undp.org"
 # Who gets an email when a new project or a change is waiting for review (comma separated)
 ALERT_EMAILS = "md.karim@un.org"
+# Latest ReliefWeb reports on the women and girls page: add the appname approved by ReliefWeb, for example
+# RELIEFWEB_APPNAME = "durablesolutionshub-sudan-women"

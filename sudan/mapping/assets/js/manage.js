@@ -101,6 +101,7 @@
         if (h[0] === "orgs") { setNav("orgs"); return await viewOrgs(); }
         if (h[0] === "history") { setNav("history"); return await viewHistory(); }
         if (h[0] === "editors") { setNav("editors"); return await viewEditors(); }
+        if (h[0] === "stories") { setNav("stories"); return await viewStories(); }
         setNav("queue"); return await viewQueue(["published", "rejected"].includes(h[1]) ? h[1] : "pending");
       } catch (e) { if (e.message !== "Please sign in.") fail(e); }
     }
@@ -612,7 +613,7 @@
 
     /* ---------- history: the change log ---------- */
     const ACTIONS = { published: "Published", updated: "Published changes", added: "Added", edited: "Edited", hidden: "Hidden from the map", deleted: "Deleted",
-      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed", "code changed": "Code changed", codes: "Project codes", "git page copied": "Git page updated" };
+      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed", "code changed": "Code changed", codes: "Project codes", "git page copied": "Git page updated", "story added": "Story added", "story changed": "Story changed", "story removed": "Story removed" };
     const actionText = (a) => ACTIONS[a] || (a ? a[0].toUpperCase() + a.slice(1) : "");
     function changesHTML(changes) {
       if (!changes || !changes.length) return "";
@@ -759,6 +760,70 @@
             <td>${i.kind === "new" ? "New project" : "Changes"}</td><td>${st(i)}${i.reviewedAt ? `<br><span class="muted" style="font-size:13px">${fmtDay(i.reviewedAt)}</span>` : ""}</td></tr>`).join("")}
         </tbody></table>` : `<div class="empty">Nothing sent yet. Open one of your <a href="#/projects">${esc(AGENCY)} projects</a> to suggest changes.</div>`}</div></div>`;
       app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", () => (location.hash = `#/project/${encodeURIComponent(tr.dataset.id)}`)));
+    }
+
+    /* ---------- stories for the theme pages ---------- */
+    const TOPICS = { women: "Women and girls", disability: "Persons with disabilities" };
+    async function viewStories() {
+      const { items } = await api("/stories");
+      app.innerHTML = `
+        <div><h1>Stories</h1><p class="lede2">Stories and news you choose to highlight on the theme pages of the git page (mdfazlulkarim.github.io/durable-solutions-sudan/women.html). Saving publishes straight away; the page updates within about 2 minutes. The latest ReliefWeb reports appear under them by themselves.</p></div>
+        <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>Page</th><th>Order</th><th>Story</th><th>From</th><th>Date</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
+          ${items.map((i) => `<tr><td>${esc(TOPICS[i.topic] || i.topic)}</td><td>${i.sort || ""}</td>
+            <td><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>${i.place ? `<br><span class="muted" style="font-size:13px">${esc(i.place)}</span>` : ""}</td>
+            <td>${esc(i.org || "")}</td><td style="white-space:nowrap">${i.date ? fmtDay(i.date) : ""}</td>
+            <td style="white-space:nowrap"><button type="button" class="btn btn-sm" data-edit="${esc(i.id)}">Edit</button> <button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.id)}">Remove</button></td></tr>`).join("")}
+        </tbody></table>` : `<div class="empty">No stories yet.</div>`}</div></div>
+        <section class="card ed"><h2 id="st-title">Add a story <small>A beneficiary story or news item, with a link to the original</small></h2>
+          <form id="st-form" class="ed" style="padding:0">
+            <div class="g3">
+              <label class="f">Page<select class="input" id="st-topic">${Object.entries(TOPICS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
+              <label class="f">Organisation<input class="input" id="st-org" placeholder="For example UNFPA"></label>
+              <label class="f">Date<input class="input" type="date" id="st-date"></label>
+            </div>
+            <label class="f">Title<input class="input" id="st-ttl" maxlength="200" required></label>
+            <label class="f">Link (https://)<input class="input" id="st-url" type="url" required placeholder="https://"></label>
+            <div class="g2">
+              <label class="f">Place<input class="input" id="st-place" maxlength="120" placeholder="State, locality or camp"></label>
+              <label class="f">Order<input class="input" id="st-sort" inputmode="numeric" placeholder="1 shows first"></label>
+            </div>
+            <label class="f">Short summary<textarea class="input" id="st-sum" rows="3" maxlength="450"></textarea><small>Two or three sentences, with a figure if there is one</small></label>
+            <div class="g2">
+              <label class="f">Quote (optional)<input class="input" id="st-quote" maxlength="220"></label>
+              <label class="f">Quote by<input class="input" id="st-qby" maxlength="120" placeholder="Name, role, place"></label>
+            </div>
+            <div class="err-line" id="st-err" role="alert"></div>
+            <div class="row"><button type="submit" class="btn btn-primary" id="st-go">Publish story</button><button type="button" class="btn" id="st-cancel" hidden>Cancel</button></div>
+          </form>
+        </section>`;
+      const g = (id) => document.getElementById(id);
+      let editing = null;
+      const fill = (i) => { g("st-topic").value = i.topic || "women"; g("st-org").value = i.org || ""; g("st-date").value = i.date || ""; g("st-ttl").value = i.title || ""; g("st-url").value = i.url || "";
+        g("st-place").value = i.place || ""; g("st-sort").value = i.sort || ""; g("st-sum").value = i.summary || ""; g("st-quote").value = i.quote || ""; g("st-qby").value = i.quote_by || ""; };
+      g("st-cancel").addEventListener("click", () => route());
+      app.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => {
+        editing = items.find((x) => x.id === b.dataset.edit); fill(editing);
+        g("st-title").innerHTML = `Edit story <small>${esc(editing.title)}</small>`; g("st-go").textContent = "Save and publish"; g("st-cancel").hidden = false;
+        g("st-form").scrollIntoView({ block: "start" }); g("st-ttl").focus();
+      }));
+      app.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
+        const i = items.find((x) => x.id === b.dataset.rm);
+        if (!confirm(`Remove "${i.title}" from the page?`)) return;
+        busy(b, true, "Removing");
+        try { await api(`/stories/${encodeURIComponent(i.id)}`, { method: "DELETE" }); SF.toast("Story removed"); route(); } catch (x) { alert(x.message); busy(b, false); }
+      }));
+      g("st-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const body = { topic: g("st-topic").value, org: g("st-org").value.trim(), date: g("st-date").value, title: g("st-ttl").value.trim(), url: g("st-url").value.trim(),
+          place: g("st-place").value.trim(), sort: g("st-sort").value.trim(), summary: g("st-sum").value.trim(), quote: g("st-quote").value.trim(), quoteBy: g("st-qby").value.trim() };
+        if (!body.title) { g("st-err").textContent = "Please add a title."; return; }
+        if (!/^https:\/\/\S+$/.test(body.url)) { g("st-err").textContent = "The link must start with https://"; return; }
+        g("st-err").textContent = ""; busy(g("st-go"), true, "Publishing");
+        try {
+          await api(editing ? `/stories/${encodeURIComponent(editing.id)}` : "/stories", { method: editing ? "PUT" : "POST", body });
+          SF.toast("Published. The page updates in about 2 minutes."); route();
+        } catch (x) { g("st-err").textContent = x.message; busy(g("st-go"), false); }
+      });
     }
 
     /* ---------- approved editors ---------- */

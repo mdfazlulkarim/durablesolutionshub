@@ -8,6 +8,7 @@
      POST /api/auth/start     sign in, step 1: email a 6-digit code to an approved email
      POST /api/auth/verify    sign in, step 2: check the code and return a session key
      GET  /api/auth/me        who is signed in
+     GET  /api/news           latest ReliefWeb reports for a theme page (women), cached for 3 hours
 
    Admin API, for signed-in DSU admins only (used by manage.html on the website):
      /admin/api/...           review queue, edit, publish, all projects, organisations, history, approved editors
@@ -83,6 +84,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
   `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, action TEXT, detail TEXT, commit_sha TEXT, by_email TEXT, project_id TEXT, changes TEXT)`,
   `CREATE TABLE IF NOT EXISTS editors (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'admin', agency TEXT, added_by TEXT, added_at TEXT, last_signin TEXT, name TEXT)`,
+  `CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, topic TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL, org TEXT, date TEXT,
+     place TEXT, summary TEXT, quote TEXT, quote_by TEXT, sort INTEGER, created_by TEXT, created_at TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS signin_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, sent_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS ratelimit (key TEXT PRIMARY KEY, count INTEGER, window_start INTEGER)`,
 ];
@@ -633,7 +636,39 @@ async function storeSubmission(env, item, meta) {
   return { id, token, ref, kind, name: p.name, lead: p.lead };
 }
 
+/* Latest reports for the theme pages, from the ReliefWeb API (needs an approved appname in RELIEFWEB_APPNAME).
+   Results are cached for 3 hours, so ReliefWeb is asked at most a few times a day. */
+const NEWS_TOPICS = {
+  women: { filter: { operator: "AND", conditions: [{ field: "primary_country.iso3", value: "sdn" }, { field: "theme.name", value: "Gender" }] } },
+  disability: { filter: { field: "primary_country.iso3", value: "sdn" }, query: { value: "disability OR disabilities", fields: ["title", "body"] } },
+};
+const plain = (t, max) => String(t || "").replace(/<[^>]+>/g, " ").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/https?:\/\/\S+/g, "")
+  .replace(/^\s*[-*+]\s+/gm, "").replace(/[#*_>`|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+async function newsApi(env, ctx, url) {
+  const topic = NEWS_TOPICS[url.searchParams.get("topic")] ? url.searchParams.get("topic") : "women";
+  if (!env.RELIEFWEB_APPNAME) return json({ ok: true, configured: false, items: [] }, 200, { "Cache-Control": "public, max-age=600" });
+  const key = new Request(`https://news.cache/${topic}`);
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const hit = cache && (await cache.match(key));
+  if (hit) return new Response(hit.body, hit);
+  const t = NEWS_TOPICS[topic];
+  const r = await fetch(`${env.RELIEFWEB_API || "https://api.reliefweb.int"}/v2/reports?appname=${encodeURIComponent(env.RELIEFWEB_APPNAME)}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preset: "latest", profile: "list", limit: 12, filter: t.filter, ...(t.query ? { query: t.query } : {}),
+      fields: { include: ["title", "url_alias", "url", "date.original", "date.created", "source.shortname", "source.name", "body"] } }),
+  }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  if (!j || !Array.isArray(j.data)) return json({ ok: true, configured: true, items: [], error: "ReliefWeb did not answer" }, 200, { "Cache-Control": "public, max-age=300" });
+  const items = j.data.map((d) => { const f = d.fields || {}; const src = (f.source || [])[0] || {};
+    return { title: plain(f.title, 300), url: f.url_alias || f.url, date: (f.date && (f.date.original || f.date.created)) || null, source: src.shortname || src.name || "", summary: plain(f.body, 240) }; })
+    .filter((x) => x.title && /^https:\/\//.test(x.url || ""));
+  const res = json({ ok: true, configured: true, topic, items, fetchedAt: nowIso() }, 200, { "Cache-Control": "public, max-age=10800" });
+  if (cache) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 async function publicApi(req, env, ctx, url) {
+  if (url.pathname === "/api/news" && req.method === "GET") return newsApi(env, ctx, url);
   const ip = clientIp(req);
   const ipHash = (await sha256(`${ip}|${await setting(env, "salt", uid)}`)).slice(0, 16);
   const adminUrl = `${env.SITE_URL || ""}manage.html`;
@@ -844,6 +879,22 @@ async function subDetail(env, s, fileUrl) {
   };
 }
 
+// The stories already on the website are copied into the database the first time the Stories page is opened
+async function ensureStories(env) {
+  if (await setting(env, "stories_imported")) return;
+  const cur = parse(await readRepoFile(env, "data/stories.json"), { items: [] });
+  const t = nowIso();
+  const stmts = (cur.items || []).map((x) => env.DB.prepare("INSERT OR IGNORE INTO stories(id,topic,title,url,org,date,place,summary,quote,quote_by,sort,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(str(x.id, 80) || uid(), x.topic || "women", str(x.title, 200), str(x.url, 600), str(x.org, 120), x.date || null, str(x.place, 120), str(x.summary, 450), str(x.quote, 220), str(x.quoteBy, 120), Number(x.sort) || 0, null, t, t));
+  stmts.push(env.DB.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('stories_imported',?)").bind(t));
+  await env.DB.batch(stmts);
+}
+async function storiesFile(env) {
+  const rows = await all(env, "SELECT * FROM stories ORDER BY topic, sort, date DESC");
+  const items = rows.map((r) => ({ id: r.id, topic: r.topic, title: r.title, url: r.url, org: r.org || "", date: r.date || "", place: r.place || "", summary: r.summary || "", quote: r.quote || "", quoteBy: r.quote_by || "", sort: r.sort || 0 }));
+  return { path: "data/stories.json", text: JSON.stringify({ updated: todayKhartoum(), items }, null, 1) };
+}
+
 async function adminApi(req, env, ctx, url) {
   const path = url.pathname.replace(/^\/admin\/api/, "");
   const ip = clientIp(req);
@@ -1007,6 +1058,45 @@ async function adminApi(req, env, ctx, url) {
     await addLog(env, "logo", acronym, sha, by);
     return json({ ok: true, commit: sha });
   }
+  // Stories highlighted on the theme pages (women and girls; persons with disabilities). Published as data/stories.json.
+  if (path === "/stories" && req.method === "GET") {
+    await ensureStories(env);
+    return json({ ok: true, items: await all(env, "SELECT * FROM stories ORDER BY topic, sort, date DESC") });
+  }
+  if ((path === "/stories" && req.method === "POST") || ((m = path.match(/^\/stories\/([\w-]+)$/)) && (req.method === "PUT" || req.method === "DELETE"))) {
+    await ensureStories(env);
+    const id = m ? m[1] : null;
+    if (id && !(await one(env, "SELECT id FROM stories WHERE id=?", id))) throw new HttpError(404, "Story not found.");
+    let what;
+    if (req.method === "DELETE") {
+      const s0 = await one(env, "SELECT title FROM stories WHERE id=?", id);
+      await run(env, "DELETE FROM stories WHERE id=?", id);
+      what = ["story removed", s0.title];
+    } else {
+      const b = await readJson(req, 20000);
+      const st = {
+        topic: ["women", "disability"].includes(b.topic) ? b.topic : "women", title: str(b.title, 200), url: str(b.url, 600), org: str(b.org, 120),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(b.date || "") ? b.date : null, place: str(b.place, 120), summary: str(b.summary, 450),
+        quote: str(b.quote, 220), quote_by: str(b.quoteBy, 120), sort: Math.max(0, Math.min(999, Number(b.sort) || 0)),
+      };
+      if (!st.title) throw new HttpError(400, "The title is missing.");
+      if (!/^https:\/\/[^\s]+$/.test(st.url)) throw new HttpError(400, "The link must start with https://");
+      if (id) {
+        await run(env, "UPDATE stories SET topic=?, title=?, url=?, org=?, date=?, place=?, summary=?, quote=?, quote_by=?, sort=?, updated_at=? WHERE id=?",
+          st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, nowIso(), id);
+        what = ["story changed", st.title];
+      } else {
+        const nid = `${slug(st.title).slice(0, 40)}-${uid().slice(0, 6)}`;
+        await run(env, "INSERT INTO stories(id,topic,title,url,org,date,place,summary,quote,quote_by,sort,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          nid, st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, by, nowIso(), nowIso());
+        what = ["story added", st.title];
+      }
+    }
+    const sha = await commitFiles(env, [await storiesFile(env)], `Stories: ${what[0].replace("story ", "")} "${what[1].slice(0, 60)}"`);
+    await addLog(env, what[0], what[1], sha, by);
+    return json({ ok: true, commit: sha });
+  }
+
   // Approved editors: who can sign in. Owners (ADMIN_EMAILS) are fixed; the rest are added here by a DSU admin.
   if (path === "/editors" && req.method === "GET") {
     const rows = await all(env, "SELECT email, name, role, agency, added_by, added_at, last_signin FROM editors ORDER BY role, agency, email");

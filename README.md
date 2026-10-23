@@ -159,6 +159,13 @@ The same site also runs at https://mdfazlulkarim.github.io/durable-solutions-sud
 
 Changes to the site code (HTML, CSS, JavaScript) are made here, in `sudan/mapping/`, and copied to the root of `durable-solutions-sudan`.
 
+### Theme pages on the git page (women and girls)
+
+The git page has extra theme pages that the hub does not show: `women.html` (women and girls). The page file, `assets/js/women.js` and `data/women.json` (the figures and their sources) live only in the `durable-solutions-sudan` repository; the menu link appears only on that site (`SF.themePages` in `common.js`). To update a figure, edit `data/women.json` there: every figure keeps its source, with the date.
+
+- **Stories:** DSU admins add, edit or remove the highlighted stories on the **Stories** page of the manage pages. They are published as `data/stories.json` to both repositories.
+- **Latest reports:** the back end reads the latest Sudan reports on gender from the ReliefWeb API (`/api/news?topic=women`, cached for 3 hours). It needs an approved ReliefWeb appname in the Worker variable `RELIEFWEB_APPNAME`; until then the page shows a link to ReliefWeb instead.
+
 ### Change text
 
 - Interface text is in the HTML files and in `assets/js/app.js` and `assets/js/form.js`.
