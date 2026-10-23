@@ -1,6 +1,6 @@
 # Solutions Footprint back end (Cloudflare Worker)
 # Secrets are NOT kept here. Add them in Cloudflare: Worker > Settings > Variables and Secrets:
-#   GITHUB_TOKEN      fine-grained GitHub key (Contents: read and write; Issues too if INBOX_REPO is used)
+#   GITHUB_TOKEN      fine-grained GitHub key for durablesolutionshub and durable-solutions-sudan (Contents: read and write)
 #   RESEND_API_KEY    Resend key, used to email the 6-digit sign-in codes
 #   TURNSTILE_SECRET  optional, Turnstile secret key (spam protection on the form)
 
@@ -20,6 +20,9 @@ GITHUB_BRANCH = "main"
 SITE_URL = "https://durablesolutionshub.org/sudan/mapping/"
 # folder of the Sudan map inside the repository
 SITE_DIR = "sudan/mapping/"
+# The git page: every change is copied there too, so both sites stay identical (its site is at the root)
+MIRROR_REPO = "mdfazlulkarim/durable-solutions-sudan"
+MIRROR_DIR = ""
 ALLOWED_ORIGINS = "https://durablesolutionshub.org,https://www.durablesolutionshub.org,https://mdfazlulkarim.github.io"
 COMMIT_NAME = "Md Fazlul Karim"
 COMMIT_EMAIL = "fozlulkarim@gmail.com"

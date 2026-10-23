@@ -401,28 +401,71 @@ async function readRepoFile(env, path) {
   if (!r.ok) throw new HttpError(502, `Could not read ${path} from GitHub (${r.status})`);
   return r.text();
 }
-// One commit with several files. files: [{ path, text } | { path, bytes } | { path, remove: true }]
-async function commitFiles(env, files, message) {
-  // Never write the map data before the projects already on the map have been imported
-  if (!(await setting(env, "imported"))) throw new HttpError(409, "First import the current map data (button on the Review queue page), so the projects already on the map are kept.");
+// One commit with several files. files: [{ path, text } | { path, b64 } | { path, remove: true }]
+// Paths are inside the site folder; target = { repo, dir } (the folder of the site in that repository).
+async function commitTo(env, target, files, message) {
   const branch = env.GITHUB_BRANCH || "main";
+  const at = (path) => `${target.dir || ""}${path}`;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const head = await gh(env, `/git/ref/heads/${branch}`);
-    const base = await gh(env, `/git/commits/${head.object.sha}`);
+    const head = await gh(env, `/git/ref/heads/${branch}`, {}, target.repo);
+    const base = await gh(env, `/git/commits/${head.object.sha}`, {}, target.repo);
     const tree = [];
     for (const f of files) {
-      if (f.remove) { tree.push({ path: repoPath(env, f.path), mode: "100644", type: "blob", sha: null }); continue; }
-      const blob = await gh(env, "/git/blobs", { method: "POST", body: f.b64 ? { content: f.b64, encoding: "base64" } : { content: f.text, encoding: "utf-8" } });
-      tree.push({ path: repoPath(env, f.path), mode: "100644", type: "blob", sha: blob.sha });
+      if (f.remove) { tree.push({ path: at(f.path), mode: "100644", type: "blob", sha: null }); continue; }
+      const blob = await gh(env, "/git/blobs", { method: "POST", body: f.b64 ? { content: f.b64, encoding: "base64" } : { content: f.text, encoding: "utf-8" } }, target.repo);
+      tree.push({ path: at(f.path), mode: "100644", type: "blob", sha: blob.sha });
     }
-    const t = await gh(env, "/git/trees", { method: "POST", body: { base_tree: base.tree.sha, tree } });
+    const t = await gh(env, "/git/trees", { method: "POST", body: { base_tree: base.tree.sha, tree } }, target.repo);
+    if (t.sha === base.tree.sha) return head.object.sha; // nothing changed
     const author = { name: env.COMMIT_NAME || "Solutions Footprint", email: env.COMMIT_EMAIL || "noreply@example.org", date: nowIso() };
-    const c = await gh(env, "/git/commits", { method: "POST", body: { message, tree: t.sha, parents: [head.object.sha], author, committer: author } });
+    const c = await gh(env, "/git/commits", { method: "POST", body: { message, tree: t.sha, parents: [head.object.sha], author, committer: author } }, target.repo);
     try {
-      await gh(env, `/git/refs/heads/${branch}`, { method: "PATCH", body: { sha: c.sha } });
+      await gh(env, `/git/refs/heads/${branch}`, { method: "PATCH", body: { sha: c.sha } }, target.repo);
       return c.sha;
     } catch (e) { if (e.gh !== 422 || attempt === 2) throw e; } // someone else committed meanwhile: try again
   }
+}
+const primary = (env) => ({ repo: env.GITHUB_REPO, dir: env.SITE_DIR || "" });
+const mirror = (env) => (env.MIRROR_REPO ? { repo: env.MIRROR_REPO, dir: env.MIRROR_DIR || "" } : null);
+
+// Every change goes to the hub and, in the same moment, to the second site (the git page), so both stay identical.
+async function commitFiles(env, files, message) {
+  // Never write the map data before the projects already on the map have been imported
+  if (!(await setting(env, "imported"))) throw new HttpError(409, "First import the current map data (button on the Review queue page), so the projects already on the map are kept.");
+  const sha = await commitTo(env, primary(env), files, message);
+  await mirrorFiles(env, files, message);
+  return sha;
+}
+async function mirrorFiles(env, files, message) {
+  const m = mirror(env);
+  if (!m) return;
+  try {
+    // after a failed copy, send everything again (data, photos and logos), not only this change
+    const full = (await setting(env, "mirror_status")) !== "ok";
+    await commitTo(env, m, full ? await fullSiteFiles(env) : files, message);
+    await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES('mirror_status','ok')");
+  } catch (e) {
+    console.error("second site not updated", e.message);
+    await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES('mirror_status',?)", `${nowIso()} ${String(e.message).slice(0, 300)}`);
+  }
+}
+// The whole published site data: the data files plus every photo and logo, read from the hub repository
+async function fullSiteFiles(env) {
+  const p = primary(env), branch = env.GITHUB_BRANCH || "main";
+  const tree = await gh(env, `/git/trees/${branch}?recursive=1`, {}, p.repo);
+  const want = (tree.tree || []).filter((x) => x.type === "blob" && x.path.startsWith(p.dir) && /^(assets\/photos\/|assets\/img\/logos\/)/.test(x.path.slice(p.dir.length)));
+  const files = [];
+  for (const x of want) {
+    const blob = await gh(env, `/git/blobs/${x.sha}`, {}, p.repo);
+    files.push({ path: x.path.slice(p.dir.length), b64: String(blob.content || "").replace(/\s+/g, "") });
+  }
+  // photos removed on the hub are removed on the second site too
+  const m = mirror(env);
+  const have = await gh(env, `/git/trees/${branch}?recursive=1`, {}, m.repo).catch(() => ({ tree: [] }));
+  const keep = new Set(files.map((f) => f.path));
+  (have.tree || []).filter((x) => x.type === "blob" && x.path.startsWith(m.dir) && x.path.slice(m.dir.length).startsWith("assets/photos/") && !keep.has(x.path.slice(m.dir.length)))
+    .forEach((x) => files.push({ path: x.path.slice(m.dir.length), remove: true }));
+  return [...files, ...(await siteFiles(env))];
 }
 // Alerts about new projects and changes waiting for review: an email to ALERT_EMAILS (and, if set up,
 // an issue in the private INBOX_REPO). Alerts are best effort and never stop a submission.
@@ -830,9 +873,18 @@ async function adminApi(req, env, ctx, url) {
     const proj = await one(env, "SELECT count(*) AS n, sum(published) AS pub FROM projects");
     const oldest = await one(env, "SELECT min(received_at) AS t FROM submissions WHERE status='pending'");
     return json({ ok: true, counts, projects: proj.n || 0, published: proj.pub || 0, oldestPending: oldest?.t || null, imported: !!(await setting(env, "imported")),
-      setup: { github: !!env.GITHUB_TOKEN, inbox: !!env.INBOX_REPO, turnstile: !!env.TURNSTILE_SECRET, email: !!env.RESEND_API_KEY }, siteUrl: env.SITE_URL, me: who });
+      setup: { github: !!env.GITHUB_TOKEN, inbox: !!env.INBOX_REPO, turnstile: !!env.TURNSTILE_SECRET, email: !!env.RESEND_API_KEY, mirror: env.MIRROR_REPO || null, mirrorStatus: await setting(env, "mirror_status") }, siteUrl: env.SITE_URL, me: who });
   }
   if (path === "/setup" && req.method === "POST") return json({ ok: true, ...(await seed(env)) });
+  if (path === "/mirror-sync" && req.method === "POST") {
+    if (!mirror(env)) throw new HttpError(400, "No second site is set up.");
+    await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES('mirror_status','sync')");
+    await mirrorFiles(env, [], "Copy the hub data, photos and logos");
+    const st = await setting(env, "mirror_status");
+    if (st !== "ok") throw new HttpError(502, `The git page could not be updated: ${st.replace(/^\S+\s/, "")}`);
+    await addLog(env, "git page copied", "All data, photos and logos copied from the hub to the git page", null, by);
+    return json({ ok: true });
+  }
 
   if (path === "/queue") {
     const status = ["pending", "published", "rejected"].includes(url.searchParams.get("status")) ? url.searchParams.get("status") : "pending";

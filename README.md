@@ -153,6 +153,12 @@ The back end is a Cloudflare Worker (free plan) with a Cloudflare D1 database. I
 
 Secrets are never kept in this repository. To test the Worker on a computer, put them in `worker/.dev.vars` (excluded from the repository) and run `npx wrangler dev` in `worker/`.
 
+### The git page (second copy of the site)
+
+The same site also runs at https://mdfazlulkarim.github.io/durable-solutions-sudan/ (repository `durable-solutions-sudan`, site at its root). Both sites use this back end, so there is one database, one approved-editors list, one review queue and one change log. Every change published from the manage pages is committed to this repository and, in the same moment, to `durable-solutions-sudan` (`MIRROR_REPO` in `worker/wrangler.toml`), so the data, photos and logos stay identical. The GitHub key needs Contents read and write on both repositories. If a copy to the git page fails, the Review queue shows a warning with a button to copy everything again.
+
+Changes to the site code (HTML, CSS, JavaScript) are made here, in `sudan/mapping/`, and copied to the root of `durable-solutions-sudan`.
+
 ### Change text
 
 - Interface text is in the HTML files and in `assets/js/app.js` and `assets/js/form.js`.

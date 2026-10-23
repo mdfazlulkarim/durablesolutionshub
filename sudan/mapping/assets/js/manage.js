@@ -115,6 +115,8 @@
       if (!ME.setup.github) setup.push("The GitHub key (GITHUB_TOKEN) is not added yet, so publishing will not work.");
       app.innerHTML = `
         ${setup.map((s) => `<div class="note-box warn">${esc(s)}</div>`).join("")}
+        ${ME.setup.mirror && ME.setup.mirrorStatus && ME.setup.mirrorStatus !== "ok" ? `<div class="note-box warn"><b>The git page was not updated with the latest change.</b> ${esc(ME.setup.mirrorStatus.replace(/^\S+\s/, "").slice(0, 160))}<br>Most often the GitHub key does not include the durable-solutions-sudan repository yet.
+          <div style="margin-top:10px"><button class="btn" id="mirror-sync">Copy everything to the git page now</button></div></div>` : ""}
         ${!ME.imported ? `<div class="note-box"><b>First step:</b> copy the projects already on the map into the admin database, so you can edit them here.
           <div style="margin-top:10px"><button class="btn btn-primary" id="seed">Import the current map data</button></div></div>` : ""}
         <div class="row between">
@@ -151,6 +153,11 @@
       app.querySelectorAll("tr.click").forEach((tr) => tr.addEventListener("click", (e) => { if (!e.target.closest("a")) location.hash = `#/review/${tr.dataset.id}`; }));
       const q = document.getElementById("q");
       q.addEventListener("input", () => app.querySelectorAll("tr[data-q]").forEach((tr) => (tr.hidden = !tr.dataset.q.includes(q.value.toLowerCase().trim()))));
+      document.getElementById("mirror-sync")?.addEventListener("click", async (e) => {
+        busy(e.target, true, "Copying");
+        try { await api("/mirror-sync", { method: "POST" }); SF.toast("The git page now matches the hub"); route(); }
+        catch (err) { alert(err.message); busy(e.target, false); }
+      });
       document.getElementById("seed")?.addEventListener("click", async (e) => {
         busy(e.target, true, "Importing");
         try { const r = await api("/setup", { method: "POST" }); SF.toast(`Imported ${r.imported} projects`); route(); }
@@ -605,7 +612,7 @@
 
     /* ---------- history: the change log ---------- */
     const ACTIONS = { published: "Published", updated: "Published changes", added: "Added", edited: "Edited", hidden: "Hidden from the map", deleted: "Deleted",
-      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed", "code changed": "Code changed", codes: "Project codes" };
+      "not published": "Not published", "sent for review": "Sent for review", logo: "Logo", import: "Import", "editor added": "Person added", "editor changed": "Person changed", "editor removed": "Person removed", "code changed": "Code changed", codes: "Project codes", "git page copied": "Git page updated" };
     const actionText = (a) => ACTIONS[a] || (a ? a[0].toUpperCase() + a.slice(1) : "");
     function changesHTML(changes) {
       if (!changes || !changes.length) return "";
