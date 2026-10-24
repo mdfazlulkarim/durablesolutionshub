@@ -776,7 +776,7 @@
         <div><h1>Stories</h1><p class="lede2">Stories and news you choose to highlight on the theme pages of the git page (mdfazlulkarim.github.io/durable-solutions-sudan/women.html). Saving publishes straight away; the page updates within about 2 minutes. The latest ReliefWeb reports appear under them by themselves.</p></div>
         <div class="card tbl-card"><div class="tbl-wrap">${items.length ? `<table class="adm"><thead><tr><th>Page</th><th>Order</th><th>Story</th><th>From</th><th>Date</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
           ${items.map((i) => `<tr><td>${esc(TOPICS[i.topic] || i.topic)}</td><td>${i.sort || ""}</td>
-            <td><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>${i.place ? `<br><span class="muted" style="font-size:13px">${esc(i.place)}</span>` : ""}</td>
+            <td><div class="st-row">${i.photoUrl ? `<img class="st-thumb" src="${esc(i.photoUrl)}" alt="">` : ""}<div><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>${i.place ? `<br><span class="muted" style="font-size:13px">${esc(i.place)}</span>` : ""}</div></div></td>
             <td>${esc(i.org || "")}</td><td style="white-space:nowrap">${i.date ? fmtDay(i.date) : ""}</td>
             <td style="white-space:nowrap"><button type="button" class="btn btn-sm" data-edit="${esc(i.id)}">Edit</button> <button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.id)}">Remove</button></td></tr>`).join("")}
         </tbody></table>` : `<div class="empty">No stories yet.</div>`}</div></div>
@@ -798,13 +798,39 @@
               <label class="f">Quote (optional)<input class="input" id="st-quote" maxlength="220"></label>
               <label class="f">Quote by<input class="input" id="st-qby" maxlength="120" placeholder="Name, role, place"></label>
             </div>
+            <div class="st-photo">
+              <div class="st-prev" id="st-prev"><span class="muted">No photo</span></div>
+              <div class="st-photo-f">
+                <label class="f">Photo (optional)<input type="file" class="input" id="st-file" accept="image/jpeg,image/png,image/webp"></label>
+                <button type="button" class="btn btn-sm" id="st-photo-rm" hidden>Remove the photo</button>
+                <small>Use only photos the agency has cleared for use, and never a photo where a survivor or a child can be identified. Location and camera details are removed before upload.</small>
+              </div>
+            </div>
+            <div class="g2">
+              <label class="f">Photo credit<input class="input" id="st-credit" maxlength="160" placeholder="For example: © UNFPA Sudan / name of the photographer"></label>
+              <label class="f">What the photo shows<input class="input" id="st-alt" maxlength="200" placeholder="For example: A midwife checks a pregnant woman in Ad-Damazin"></label>
+            </div>
             <div class="err-line" id="st-err" role="alert"></div>
             <div class="row"><button type="submit" class="btn btn-primary" id="st-go">Publish story</button><button type="button" class="btn" id="st-cancel" hidden>Cancel</button></div>
           </form>
         </section>`;
       const g = (id) => document.getElementById(id);
       let editing = null;
-      const fill = (i) => { g("st-topic").value = i.topic || "women"; g("st-org").value = i.org || ""; g("st-date").value = i.date || ""; g("st-ttl").value = i.title || ""; g("st-url").value = i.url || "";
+      // photo: a new upload (file id), or removed; otherwise the published photo stays
+      const ph = { file: null, remove: false };
+      const showPhoto = (url) => { g("st-prev").innerHTML = url ? `<img src="${esc(url)}" alt="">` : '<span class="muted">No photo</span>'; g("st-photo-rm").hidden = !url; };
+      g("st-file").addEventListener("change", async () => {
+        const f = g("st-file").files[0]; if (!f) return;
+        g("st-err").textContent = ""; g("st-prev").innerHTML = '<span class="muted">Adding the photo</span>';
+        try {
+          const img = await SF.shrinkImage(f);
+          const r = await api("/file", { method: "POST", body: { owner: `story:${editing ? editing.id : "new"}`, kind: "photo", image: img } });
+          ph.file = r.file; ph.remove = false; showPhoto(r.url);
+        } catch (x) { g("st-err").textContent = x.message; showPhoto(ph.file ? null : editing && !ph.remove ? editing.photoUrl : null); }
+        g("st-file").value = "";
+      });
+      g("st-photo-rm").addEventListener("click", () => { ph.file = null; ph.remove = true; showPhoto(null); });
+      const fill = (i) => { g("st-credit").value = i.photo_credit || ""; g("st-alt").value = i.photo_alt || ""; ph.file = null; ph.remove = false; showPhoto(i.photoUrl); g("st-topic").value = i.topic || "women"; g("st-org").value = i.org || ""; g("st-date").value = i.date || ""; g("st-ttl").value = i.title || ""; g("st-url").value = i.url || "";
         g("st-place").value = i.place || ""; g("st-sort").value = i.sort || ""; g("st-sum").value = i.summary || ""; g("st-quote").value = i.quote || ""; g("st-qby").value = i.quote_by || ""; };
       g("st-cancel").addEventListener("click", () => route());
       app.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => {
@@ -821,8 +847,11 @@
       g("st-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const body = { topic: g("st-topic").value, org: g("st-org").value.trim(), date: g("st-date").value, title: g("st-ttl").value.trim(), url: g("st-url").value.trim(),
-          place: g("st-place").value.trim(), sort: g("st-sort").value.trim(), summary: g("st-sum").value.trim(), quote: g("st-quote").value.trim(), quoteBy: g("st-qby").value.trim() };
+          place: g("st-place").value.trim(), sort: g("st-sort").value.trim(), summary: g("st-sum").value.trim(), quote: g("st-quote").value.trim(), quoteBy: g("st-qby").value.trim(),
+          photoFile: ph.file, photoRemove: ph.remove, photoCredit: g("st-credit").value.trim(), photoAlt: g("st-alt").value.trim() };
         if (!body.title) { g("st-err").textContent = "Please add a title."; return; }
+        const hasPhoto = ph.file || (editing && editing.photo && !ph.remove);
+        if (hasPhoto && !body.photoCredit) { g("st-err").textContent = "Please add the photo credit."; g("st-credit").focus(); return; }
         if (!/^https:\/\/\S+$/.test(body.url)) { g("st-err").textContent = "The link must start with https://"; return; }
         g("st-err").textContent = ""; busy(g("st-go"), true, "Publishing");
         try {

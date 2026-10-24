@@ -102,7 +102,8 @@ async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
   // databases made before sign-in existed get the new column for who made each change
-  for (const sql of ["ALTER TABLE log ADD COLUMN by_email TEXT", "ALTER TABLE log ADD COLUMN project_id TEXT", "ALTER TABLE log ADD COLUMN changes TEXT", "ALTER TABLE editors ADD COLUMN name TEXT", "ALTER TABLE submissions ADD COLUMN submitted_by TEXT"]) {
+  for (const sql of ["ALTER TABLE log ADD COLUMN by_email TEXT", "ALTER TABLE log ADD COLUMN project_id TEXT", "ALTER TABLE log ADD COLUMN changes TEXT", "ALTER TABLE editors ADD COLUMN name TEXT", "ALTER TABLE submissions ADD COLUMN submitted_by TEXT",
+    "ALTER TABLE stories ADD COLUMN photo TEXT", "ALTER TABLE stories ADD COLUMN photo_credit TEXT", "ALTER TABLE stories ADD COLUMN photo_alt TEXT"]) {
     try { await env.DB.prepare(sql).run(); } catch (e) { /* already there */ }
   }
   schemaReady = true;
@@ -893,7 +894,8 @@ async function ensureStories(env) {
 }
 async function storiesFile(env) {
   const rows = await all(env, "SELECT * FROM stories ORDER BY topic, sort, date DESC");
-  const items = rows.map((r) => ({ id: r.id, topic: r.topic, title: r.title, url: r.url, org: r.org || "", date: r.date || "", place: r.place || "", summary: r.summary || "", quote: r.quote || "", quoteBy: r.quote_by || "", sort: r.sort || 0 }));
+  const items = rows.map((r) => ({ id: r.id, topic: r.topic, title: r.title, url: r.url, org: r.org || "", date: r.date || "", place: r.place || "", summary: r.summary || "", quote: r.quote || "", quoteBy: r.quote_by || "", sort: r.sort || 0,
+    ...(r.photo ? { photo: r.photo, photoCredit: r.photo_credit || "", photoAlt: r.photo_alt || "" } : {}) }));
   return { path: "data/stories.json", text: JSON.stringify({ updated: todayKhartoum(), items }, null, 1) };
 }
 
@@ -1040,7 +1042,7 @@ async function adminApi(req, env, ctx, url) {
   // Uploads made in the admin pages (photos for a project or submission, logos)
   if (path === "/file" && req.method === "POST") {
     const body = await readJson(req);
-    const owner = /^(project:[\w-]+|[a-f0-9]{32})$/.test(body.owner || "") ? body.owner : null;
+    const owner = /^((project|story):[\w-]+|[a-f0-9]{32})$/.test(body.owner || "") ? body.owner : null;
     if (!owner) throw new HttpError(400, "Unknown owner.");
     const id = await saveImage(env, owner, body.kind === "logo" ? "logo" : "photo", body.image);
     return json({ ok: true, file: id, url: await fileUrl(id) });
@@ -1065,16 +1067,19 @@ async function adminApi(req, env, ctx, url) {
   // Stories highlighted on the theme pages (women and girls; persons with disabilities). Published as data/stories.json.
   if (path === "/stories" && req.method === "GET") {
     await ensureStories(env);
-    return json({ ok: true, items: await all(env, "SELECT * FROM stories ORDER BY topic, sort, date DESC") });
+    const items = await all(env, "SELECT * FROM stories ORDER BY topic, sort, date DESC");
+    return json({ ok: true, items: items.map((i) => ({ ...i, photoUrl: i.photo ? `${env.SITE_URL}${i.photo}` : null })) });
   }
   if ((path === "/stories" && req.method === "POST") || ((m = path.match(/^\/stories\/([\w-]+)$/)) && (req.method === "PUT" || req.method === "DELETE"))) {
     await ensureStories(env);
     const id = m ? m[1] : null;
     if (id && !(await one(env, "SELECT id FROM stories WHERE id=?", id))) throw new HttpError(404, "Story not found.");
     let what;
+    const photoFiles = [], usedFiles = [];
     if (req.method === "DELETE") {
-      const s0 = await one(env, "SELECT title FROM stories WHERE id=?", id);
+      const s0 = await one(env, "SELECT title, photo FROM stories WHERE id=?", id);
       await run(env, "DELETE FROM stories WHERE id=?", id);
+      if (s0.photo) photoFiles.push({ path: s0.photo, remove: true });
       what = ["story removed", s0.title];
     } else {
       const b = await readJson(req, 20000);
@@ -1085,18 +1090,31 @@ async function adminApi(req, env, ctx, url) {
       };
       if (!st.title) throw new HttpError(400, "The title is missing.");
       if (!/^https:\/\/[^\s]+$/.test(st.url)) throw new HttpError(400, "The link must start with https://");
+      // Photo: a new upload (photoFile), removed (photoRemove), or kept as it is. A photo always needs a credit.
+      const sid = id || `${slug(st.title).slice(0, 40)}-${uid().slice(0, 6)}`;
+      const before = id ? (await one(env, "SELECT photo FROM stories WHERE id=?", id)).photo : null;
+      let photo = before;
+      if (b.photoFile) {
+        const f = await one(env, "SELECT id, mime, data FROM files WHERE id=?", String(b.photoFile));
+        if (!f) throw new HttpError(400, "The photo was not found. Please add it again.");
+        photo = `assets/img/stories/${sid}-${uid().slice(0, 4)}.${IMAGE_TYPES[f.mime] || "jpg"}`;
+        photoFiles.push({ path: photo, b64: String(f.data) }); usedFiles.push(f.id);
+      } else if (b.photoRemove) photo = null;
+      if (before && before !== photo) photoFiles.push({ path: before, remove: true });
+      st.photo = photo; st.photo_credit = photo ? str(b.photoCredit, 160) : null; st.photo_alt = photo ? str(b.photoAlt, 200) : null;
+      if (photo && !st.photo_credit) throw new HttpError(400, "Please add the photo credit, for example: UNFPA Sudan / name of the photographer.");
       if (id) {
-        await run(env, "UPDATE stories SET topic=?, title=?, url=?, org=?, date=?, place=?, summary=?, quote=?, quote_by=?, sort=?, updated_at=? WHERE id=?",
-          st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, nowIso(), id);
+        await run(env, "UPDATE stories SET topic=?, title=?, url=?, org=?, date=?, place=?, summary=?, quote=?, quote_by=?, sort=?, photo=?, photo_credit=?, photo_alt=?, updated_at=? WHERE id=?",
+          st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, st.photo, st.photo_credit, st.photo_alt, nowIso(), id);
         what = ["story changed", st.title];
       } else {
-        const nid = `${slug(st.title).slice(0, 40)}-${uid().slice(0, 6)}`;
-        await run(env, "INSERT INTO stories(id,topic,title,url,org,date,place,summary,quote,quote_by,sort,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-          nid, st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, by, nowIso(), nowIso());
+        await run(env, "INSERT INTO stories(id,topic,title,url,org,date,place,summary,quote,quote_by,sort,photo,photo_credit,photo_alt,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          sid, st.topic, st.title, st.url, st.org, st.date, st.place, st.summary, st.quote, st.quote_by, st.sort, st.photo, st.photo_credit, st.photo_alt, by, nowIso(), nowIso());
         what = ["story added", st.title];
       }
     }
-    const sha = await commitFiles(env, [await storiesFile(env)], `Stories: ${what[0].replace("story ", "")} "${what[1].slice(0, 60)}"`);
+    const sha = await commitFiles(env, [await storiesFile(env), ...photoFiles], `Stories: ${what[0].replace("story ", "")} "${what[1].slice(0, 60)}"`);
+    for (const fid of usedFiles) await run(env, "DELETE FROM files WHERE id=?", fid);
     await addLog(env, what[0], what[1], sha, by);
     return json({ ok: true, commit: sha });
   }

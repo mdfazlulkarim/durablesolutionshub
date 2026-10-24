@@ -163,7 +163,7 @@ Changes to the site code (HTML, CSS, JavaScript) are made here, in `sudan/mappin
 
 The git page has extra theme pages that the hub does not show: `women.html` (women and girls). The page file, `assets/js/women.js` and `data/women.json` (the figures and their sources) live only in the `durable-solutions-sudan` repository; the menu link appears only on that site (`SF.themePages` in `common.js`). To update a figure, edit `data/women.json` there: every figure keeps its source, with the date.
 
-- **Stories:** DSU admins add, edit or remove the highlighted stories on the **Stories** page of the manage pages. They are published as `data/stories.json` to both repositories.
+- **Stories:** DSU admins add, edit or remove the highlighted stories on the **Stories** page of the manage pages. They are published as `data/stories.json` to both repositories. A story can have one photo, with a credit (required) and a short description; it is saved as `assets/img/stories/<story>-<code>.jpg`. Use only photos the agency has cleared for use.
 - **Latest reports:** the back end reads the latest Sudan reports on gender from the ReliefWeb API (`/api/news?topic=women`, cached for 3 hours). It needs an approved ReliefWeb appname in the Worker variable `RELIEFWEB_APPNAME`; until then the page shows a link to ReliefWeb instead.
 
 ### Change text
