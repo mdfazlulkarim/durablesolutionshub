@@ -781,13 +781,39 @@ async function sendMail(env, to, subject, textBody, html) {
     throw new HttpError(502, "The sign-in email could not be sent. Please try again in a few minutes.");
   }
 }
-function codeEmail(code) {
-  const text = `Your sign-in code for the Durable Solutions Hub is ${code}\n\nIt works for ${CODE_MINUTES} minutes. If you did not ask for this code, you can ignore this email.\n\nDurable Solutions Hub | Sudan`;
-  const html = `<div style="font-family:Arial,sans-serif;font-size:15px;color:#1c2230;max-width:480px">
-    <p style="margin:0 0 6px;color:#1d5fae;font-size:12px;font-weight:bold;letter-spacing:.04em">DURABLE SOLUTIONS HUB | SUDAN</p>
-    <p>Your sign-in code is:</p>
-    <p style="font-size:30px;font-weight:bold;letter-spacing:8px;margin:8px 0 14px">${code}</p>
-    <p>It works for ${CODE_MINUTES} minutes. If you did not ask for this code, you can ignore this email.</p></div>`;
+// The sign-in code email: branded with the hub's name (no logo), the email and code centred,
+// and the rules on sharing the code and the data
+const escHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function codeEmail(env, email, code) {
+  const F = "Arial,Helvetica,sans-serif", BLUE = "#1d5fae", DK = "#164b8b", INK = "#1c2230", MUTED = "#5b6472", LINE = "#e2e0d9";
+  const mail = contact(env), to = escHtml(email);
+  const notice = [
+    "Do not share this code with anyone, including colleagues. The Durable Solutions Unit will never ask you for it.",
+    "Sharing your code or your access may lead to your access being revoked.",
+    "By signing in, you agree not to take screenshots of, copy or share any data you see after signing in, unless the Durable Solutions Unit has given you permission.",
+  ];
+  const ignore = "Did not ask for this code? You can ignore this email. No one can sign in without it.";
+  const text = `Durable Solutions Hub | Sudan\n\nYour sign-in code for\n${email}\n\n${code.slice(0, 3)} ${code.slice(3)}\n\nEnter it in the Sign in window. It works for ${CODE_MINUTES} minutes.\n\nThis code is for you only\n${notice.map((t) => `- ${t}`).join("\n")}\n\n${ignore}\n\nDurable Solutions Hub | Sudan, durablesolutionshub.org\nQuestions: ${mail}. This is an automated message, please do not reply.`;
+  const tiles = [...code].map((d, i) => `<td style="padding:0 2px"><div style="width:40px;height:56px;border:1px solid #c9d8ee;border-radius:8px;background:#ffffff;font:bold 30px ${F};line-height:56px;color:${DK};text-align:center">${d}</div></td>${i === 2 ? '<td style="width:8px"></td>' : ""}`).join("");
+  const bullets = notice.map((t) => `<tr><td valign="top" style="padding:0 8px 8px 0;font:14px/1.5 ${F};color:${BLUE}">&bull;</td><td style="padding:0 0 8px;font:14px/1.5 ${F};color:${INK}">${t}</td></tr>`).join("");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in code</title></head>
+<body style="margin:0;padding:0;background:#eef1f5">
+<div style="display:none;max-height:0;overflow:hidden">Your sign-in code for ${to}. It works for ${CODE_MINUTES} minutes.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${LINE}">
+<tr><td align="center" style="background:${BLUE};padding:26px 32px">
+  <div style="font:bold 20px ${F};color:#ffffff;letter-spacing:.02em">Durable Solutions Hub</div>
+  <div style="font:13px ${F};color:#cfe0f5;letter-spacing:.14em;padding-top:4px">SUDAN</div></td></tr>
+<tr><td align="center" style="padding:30px 32px 0;font:15px ${F};color:${MUTED}">Here is your sign-in code for</td></tr>
+<tr><td align="center" style="padding:8px 32px 0"><span style="display:inline-block;background:#e8f0fa;color:${DK};font:bold 15px ${F};padding:7px 16px;border-radius:999px">${to}</span></td></tr>
+<tr><td align="center" style="padding:22px 12px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${tiles}</tr></table></td></tr>
+<tr><td align="center" style="padding:14px 32px 26px;font:13px ${F};color:${MUTED}">Enter it in the Sign in window. It works for ${CODE_MINUTES} minutes.</td></tr>
+<tr><td style="padding:0 24px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f6fc;border:1px solid #d6e3f4;border-radius:10px">
+  <tr><td style="padding:18px 20px 6px;font:bold 15px ${F};color:${DK}">This code is for you only</td></tr>
+  <tr><td style="padding:4px 20px 10px"><table role="presentation" cellpadding="0" cellspacing="0">${bullets}</table></td></tr></table></td></tr>
+<tr><td align="center" style="padding:0 32px 26px;font:13px/1.5 ${F};color:${MUTED}">${ignore}</td></tr>
+<tr><td align="center" style="background:#f7f7f5;border-top:1px solid ${LINE};padding:16px 24px;font:12px/1.6 ${F};color:${MUTED}">Durable Solutions Hub | Sudan &middot; <a href="https://durablesolutionshub.org" style="color:${BLUE};text-decoration:none">durablesolutionshub.org</a><br>Questions: <a href="mailto:${mail}" style="color:${BLUE};text-decoration:none">${mail}</a> &middot; This is an automated message, please do not reply.</td></tr>
+</table></td></tr></table></body></html>`;
   return { subject: `${code} is your Durable Solutions Hub sign-in code`, text, html };
 }
 
@@ -805,7 +831,7 @@ async function authApi(req, env, url, ipHash) {
     await run(env, `INSERT INTO signin_codes(email,code_hash,expires,attempts,sent_at) VALUES(?,?,?,0,?)
       ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires=excluded.expires, attempts=0, sent_at=excluded.sent_at`,
       email, await sha256(`${email}|${code}|${await sessionSecret(env)}`), Date.now() + CODE_MINUTES * 60e3, Date.now());
-    const m = codeEmail(code);
+    const m = codeEmail(env, email, code);
     await sendMail(env, email, m.subject, m.text, m.html);
     return json({ ok: true, minutes: CODE_MINUTES, ...(env.DEV_SHOW_CODE === "1" ? { devCode: code } : {}) });
   }
