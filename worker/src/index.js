@@ -793,8 +793,7 @@ function codeEmail(env, email, code) {
     "By signing in, you agree not to take screenshots of, copy or share any data you see after signing in, unless the Durable Solutions Unit has given you permission.",
   ];
   const ignore = "Did not ask for this code? You can ignore this email. No one can sign in without it.";
-  const text = `Durable Solutions Hub | Sudan\n\nYour sign-in code for\n${email}\n\n${code.slice(0, 3)} ${code.slice(3)}\n\nEnter it in the Sign in window. It works for ${CODE_MINUTES} minutes.\n\nThis code is for you only\n${notice.map((t) => `- ${t}`).join("\n")}\n\n${ignore}\n\nDurable Solutions Hub | Sudan, durablesolutionshub.org\nQuestions: ${mail}. This is an automated message, please do not reply.`;
-  const tiles = [...code].map((d, i) => `<td style="padding:0 2px"><div style="width:40px;height:56px;border:1px solid #c9d8ee;border-radius:8px;background:#ffffff;font:bold 30px ${F};line-height:56px;color:${DK};text-align:center">${d}</div></td>${i === 2 ? '<td style="width:8px"></td>' : ""}`).join("");
+  const text = `Durable Solutions Hub | Sudan\n\nYour sign-in code for\n${email}\n\n${code}\n\nEnter it in the Sign in window. It works for ${CODE_MINUTES} minutes.\n\nThis code is for you only\n${notice.map((t) => `- ${t}`).join("\n")}\n\n${ignore}\n\nDurable Solutions Hub | Sudan, durablesolutionshub.org\nQuestions: ${mail}. This is an automated message, please do not reply.`;
   const bullets = notice.map((t) => `<tr><td valign="top" style="padding:0 8px 8px 0;font:14px/1.5 ${F};color:${BLUE}">&bull;</td><td style="padding:0 0 8px;font:14px/1.5 ${F};color:${INK}">${t}</td></tr>`).join("");
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in code</title></head>
 <body style="margin:0;padding:0;background:#eef1f5">
@@ -806,7 +805,7 @@ function codeEmail(env, email, code) {
   <div style="font:13px ${F};color:#cfe0f5;letter-spacing:.14em;padding-top:4px">SUDAN</div></td></tr>
 <tr><td align="center" style="padding:30px 32px 0;font:15px ${F};color:${MUTED}">Here is your sign-in code for</td></tr>
 <tr><td align="center" style="padding:8px 32px 0"><span style="display:inline-block;background:#e8f0fa;color:${DK};font:bold 15px ${F};padding:7px 16px;border-radius:999px">${to}</span></td></tr>
-<tr><td align="center" style="padding:22px 12px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${tiles}</tr></table></td></tr>
+<tr><td align="center" style="padding:20px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#e8f0fa;border-radius:10px;padding:16px 28px;font:bold 36px 'Courier New',monospace;letter-spacing:6px;color:${DK}">${code}</td></tr></table></td></tr>
 <tr><td align="center" style="padding:14px 32px 26px;font:13px ${F};color:${MUTED}">Enter it in the Sign in window. It works for ${CODE_MINUTES} minutes.</td></tr>
 <tr><td style="padding:0 24px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f6fc;border:1px solid #d6e3f4;border-radius:10px">
   <tr><td style="padding:18px 20px 6px;font:bold 15px ${F};color:${DK}">This code is for you only</td></tr>
