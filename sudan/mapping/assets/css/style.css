@@ -1051,6 +1051,21 @@ dialog.signin-modal .modal-close { background: transparent; box-shadow: none; co
 .w2-roi-l { margin: 0; font-size: 13.5px; color: var(--ink); line-height: 1.4; }
 .w2-roi-s { margin: auto 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); line-height: 1.4; }
 .w2-roi-n { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+/* what has not worked: latest first, the year large on the left */
+.w2-fails { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.w2-more .w2-fails { margin-top: 10px; }
+.w2-fail { display: grid; grid-template-columns: 84px 1fr; gap: 16px; padding: 16px 20px; border-left: 4px solid var(--warn-ink); }
+.w2-fail-y { font-size: 28px; font-weight: 700; color: var(--warn-ink); line-height: 1; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.w2-fail-b h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+.w2-fail-m { margin: 3px 0 6px; font-size: 13px; color: var(--muted); }
+.w2-fail-b p { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.5; }
+.w2-fail-b p.w2-fail-m { color: var(--muted); font-size: 13px; }
+.w2-fail-a { display: inline-block; margin-top: 6px; font-size: 13.5px; font-weight: 500; }
+.w2-learn { margin-top: 16px; background: var(--brand-tint); border: 1px solid var(--brand-line); border-radius: 14px; padding: 18px 22px; }
+.w2-learn h3 { margin: 0 0 12px; font-size: 17px; }
+.w2-learn ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.w2-learn li { display: flex; flex-direction: column; gap: 8px; background: var(--panel); border-radius: 10px; padding: 14px; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.w2-learn li b { color: var(--ink); }
 /* projects on the map: cards with a small map of Sudan */
 .w2-proj-sum { margin: -4px 0 14px; font-size: 15.5px; color: var(--ink-2); line-height: 1.5; }
 .w2-gapnote { display: flex; align-items: center; gap: 8px; width: fit-content; margin-top: 8px; padding: 7px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-ink); font-size: 13.5px; }
@@ -1092,6 +1107,7 @@ dialog.signin-modal .modal-close { background: transparent; box-shadow: none; co
   .w2-ask-h { max-width: none; }
   .w2-ask-btn { justify-self: start; }
   .w2-roi-g { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .w2-learn ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .w2-pcs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
@@ -1101,6 +1117,9 @@ dialog.signin-modal .modal-close { background: transparent; box-shadow: none; co
   .w2-big-v { font-size: 32px; }
   .w2-tiles, .w2-fund-2, .w2-voices, .w2-map, .w2-needs, .w2-pcs, .w2-roi-g { grid-template-columns: 1fr; }
   .w2-roi { padding: 16px; }
+  .w2-learn ul { grid-template-columns: 1fr; }
+  .w2-fail { grid-template-columns: 1fr; gap: 6px; padding: 14px 16px; }
+  .w2-fail-y { font-size: 22px; }
   .st-photo { flex-direction: column; }
   .w2-figs span { width: 22px; height: 30px; }
   .w2-table thead { display: none; }
