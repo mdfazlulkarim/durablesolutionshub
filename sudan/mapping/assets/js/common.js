@@ -127,14 +127,14 @@ SF.donorSplit = (p, total) => {
 SF.loadLogos = () => SF.loadJSON(SF.config.logosUrl).then((l) => { Object.assign(SF.LOGOS, l || {}); }).catch(() => {});
 
 /* Make a photo or logo smaller in the browser, to under 1 MB, before it is sent.
+   Every image is redrawn, even a small one, so nothing hidden in the file is sent:
+   phone photos often carry the GPS position where they were taken, the camera and the time.
    Returns { name, type, data (base64), size, origSize, url (for a preview) }. */
 SF.MAX_IMAGE = 950 * 1024;
 SF.shrinkImage = async (file, opts = {}) => {
   const max = opts.maxBytes || SF.MAX_IMAGE, side = opts.maxSide || 1600;
-  const okType = /^image\/(jpeg|png|webp)$/.test(file.type);
   const toB64 = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
   const done = async (blob, type) => ({ name: file.name.replace(/\.[^.]+$/, "") + (type === "image/png" ? ".png" : ".jpg"), type, data: await toB64(blob), size: blob.size, origSize: file.size, url: URL.createObjectURL(blob) });
-  if (okType && file.size <= max && !opts.force) return { ...(await done(file, file.type)), name: file.name, type: file.type };
   const src = URL.createObjectURL(file);
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(`"${file.name}" could not be opened as a photo. Please use a JPG or PNG file.`)); i.src = src; });
   URL.revokeObjectURL(src);
