@@ -733,7 +733,9 @@ async function publicApi(req, env, ctx, url) {
 /* ---------------- sign-in with an emailed code ---------------- */
 // Only approved emails can sign in: the owners in ADMIN_EMAILS (set in wrangler.toml) and the
 // people a DSU admin adds on the "Approved editors" page. Removing someone ends their session at once.
-// Roles: "admin" (DSU, all projects, publishes) and "agency" (one agency's projects; changes go to the review queue).
+// Roles: "admin" (DSU, all projects, publishes), "agency" (one agency's projects; changes go to the review queue)
+// and "viewer" (early access to the theme pages, such as Women and girls; no access to projects or the Manage pages).
+// "pages" lists the theme pages a person may open: the owners and viewers only, for now.
 const SESSION_HOURS = 24;
 const CODE_MINUTES = 10;
 const normEmail = (e) => String(e || "").trim().toLowerCase().slice(0, 160);
@@ -747,11 +749,11 @@ async function sessionSecret(env) { return setting(env, "session_secret", () => 
 const ownerName = async (env, email) => (await setting(env, `name:${email}`)) || String(env.ADMIN_NAMES || "").split(",").map((x) => x.trim())[owners(env).indexOf(email)] || "";
 async function approved(env, email) {
   if (!email) return null;
-  if (owners(env).includes(email)) return { email, name: await ownerName(env, email), role: "admin", agency: null, owner: true };
+  if (owners(env).includes(email)) return { email, name: await ownerName(env, email), role: "admin", agency: null, owner: true, pages: ["women"] };
   const r = await one(env, "SELECT email, name, role, agency FROM editors WHERE email=?", email);
   if (!r) return null;
-  const role = r.role === "agency" && r.agency ? "agency" : "admin";
-  return { email: r.email, name: r.name || "", role, agency: role === "agency" ? r.agency : null, owner: false };
+  const role = r.role === "agency" && r.agency ? "agency" : r.role === "viewer" ? "viewer" : "admin";
+  return { email: r.email, name: r.name || "", role, agency: role === "agency" ? r.agency : null, owner: false, pages: role === "viewer" ? ["women"] : [] };
 }
 const nameOf = async (env, email) => (email ? (await approved(env, email))?.name || "" : "");
 async function makeToken(env, email) {
@@ -826,7 +828,7 @@ async function authApi(req, env, url, ipHash) {
     await run(env, "UPDATE editors SET last_signin=? WHERE email=?", nowIso(), email);
     if (who.owner) await run(env, "INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", `signin:${email}`, nowIso());
     const t = await makeToken(env, email);
-    return json({ ok: true, token: t.token, expires: t.expires, email, name: who.name, role: who.role, agency: who.agency, owner: who.owner });
+    return json({ ok: true, token: t.token, expires: t.expires, email, name: who.name, role: who.role, agency: who.agency, owner: who.owner, pages: who.pages });
   }
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
     const who = await signedIn(env, req);
@@ -895,6 +897,8 @@ async function storiesFile(env) {
   return { path: "data/stories.json", text: JSON.stringify({ updated: todayKhartoum(), items }, null, 1) };
 }
 
+const roleDesc = (f) => (f.role === "agency" ? `${f.agency} admin` : f.role === "viewer" ? "early access to the Women and girls page" : "DSU admin");
+
 async function adminApi(req, env, ctx, url) {
   const path = url.pathname.replace(/^\/admin\/api/, "");
   const ip = clientIp(req);
@@ -916,7 +920,7 @@ async function adminApi(req, env, ctx, url) {
   if (req.method !== "GET" && req.headers.get("X-SF-Admin") !== "1") throw new HttpError(403, "Request refused.");
   const fileUrl = async (id) => `${url.origin}/admin/api/file/${id}?k=${await hmac(await sessionSecret(env), `f.${id}`)}`;
   if (who.role === "agency") return agencyApi(req, env, ctx, url, path, who, fileUrl);
-  if (who.role !== "admin") throw new HttpError(403, "Only DSU admins can use these pages.");
+  if (who.role !== "admin") throw new HttpError(403, "Only DSU admins and agency admins can use these pages.");
 
   if (path === "/me") {
     const counts = {};
@@ -1106,7 +1110,7 @@ async function adminApi(req, env, ctx, url) {
     return json({ ok: true, items: [...own, ...rows.filter((r) => !owners(env).includes(r.email)).map((r) => ({ ...r, owner: false }))], me: who.email, leads });
   }
   const editorFields = (body) => {
-    const role = body.role === "agency" ? "agency" : "admin";
+    const role = body.role === "agency" ? "agency" : body.role === "viewer" ? "viewer" : "admin";
     const agency = role === "agency" ? str(body.agency, 40) : null;
     if (role === "agency" && !agency) throw new HttpError(400, "Choose the agency this person can edit.");
     return { name: str(body.name, 120), role, agency };
@@ -1119,7 +1123,7 @@ async function adminApi(req, env, ctx, url) {
     if (!f.name) throw new HttpError(400, "Please enter the person's name.");
     if (owners(env).includes(email) || (await one(env, "SELECT email FROM editors WHERE email=?", email))) throw new HttpError(409, "This email is already on the list.");
     await run(env, "INSERT INTO editors(email,name,role,agency,added_by,added_at) VALUES(?,?,?,?,?,?)", email, f.name, f.role, f.agency, by, nowIso());
-    await addLog(env, "editor added", `${f.name} <${email}>, ${f.role === "agency" ? `${f.agency} admin` : "DSU admin"}`, null, by);
+    await addLog(env, "editor added", `${f.name} <${email}>, ${roleDesc(f)}`, null, by);
     return json({ ok: true });
   }
   if ((m = path.match(/^\/editors\/(.+)$/)) && req.method === "PUT") {
@@ -1132,7 +1136,7 @@ async function adminApi(req, env, ctx, url) {
     const f = editorFields(body);
     const r = await run(env, "UPDATE editors SET name=?, role=?, agency=? WHERE email=?", f.name, f.role, f.agency, email);
     if (!r.meta?.changes) throw new HttpError(404, "This email is not on the list.");
-    await addLog(env, "editor changed", `${f.name} <${email}>, ${f.role === "agency" ? `${f.agency} admin` : "DSU admin"}`, null, by);
+    await addLog(env, "editor changed", `${f.name} <${email}>, ${roleDesc(f)}`, null, by);
     return json({ ok: true });
   }
   if ((m = path.match(/^\/editors\/(.+)$/)) && req.method === "DELETE") {

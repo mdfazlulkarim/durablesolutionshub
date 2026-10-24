@@ -1022,6 +1022,17 @@ dialog.signin-modal .modal-close { background: transparent; box-shadow: none; co
 .w2-src-list { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 .w2-src-list li { border-radius: 6px; transition: background 0.3s; }
 .w2-src-list li.hl { background: var(--brand-tint); }
+/* Early access: while the page is locked, only the note is shown */
+.w2[data-locked] > :not(.w2-gate) { display: none !important; }
+.w2:not([data-locked]) > .w2-gate { display: none; }
+.w2-gate { min-height: 50vh; }
+.w2-gate-card { max-width: 620px; margin: 32px auto 0; padding: 36px 32px; text-align: center; }
+.w2-gate-card p { line-height: 1.55; }
+.w2-gate-ico { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 50%; background: var(--brand-tint); color: var(--brand); }
+.w2-gate-ico svg { width: 26px; height: 26px; }
+.w2-gate-card .w2-kicker { color: var(--brand); margin: 16px 0 6px; }
+.w2-gate-card h1 { margin: 0 0 12px; font-size: 26px; line-height: 1.25; }
+.w2-gate-act { display: flex; justify-content: center; margin: 20px 0 12px; }
 @media (max-width: 900px) {
   .w2-big, .w2-msgs { grid-template-columns: 1fr; }
   .w2-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }

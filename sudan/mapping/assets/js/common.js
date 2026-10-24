@@ -379,7 +379,7 @@ SF.auth = {
     const parts = (s.name ? String(s.name).split(/\s+/) : String(s.email || "").split("@")[0].split(/[._-]+/)).filter(Boolean);
     return ((parts[0] || "?")[0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   },
-  roleLabel: (s) => (s.role === "admin" ? "DSU admin" : `${s.agency || "Agency"} admin`),
+  roleLabel: (s) => (s.role === "admin" ? "DSU admin" : s.role === "viewer" ? "Early access" : `${s.agency || "Agency"} admin`),
   drawButton() {
     const host = document.getElementById("acct");
     if (!host) return;
@@ -389,12 +389,12 @@ SF.auth = {
       document.getElementById("signin-btn").addEventListener("click", () => SF.auth.open());
       return;
     }
-    const admin = s.role === "admin";
+    const admin = s.role === "admin", viewer = s.role === "viewer";
     host.innerHTML = `
       <button type="button" class="avatar-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false" aria-controls="acct-menu" title="Signed in as ${SF.esc(s.name || s.email)}">${SF.esc(SF.auth.initials(s))}</button>
       <div class="dropdown-menu acct-menu" id="acct-menu" role="menu" hidden>
         <div class="acct-who"><b>${SF.esc(s.name || s.email)}</b>${s.name ? `${SF.esc(s.email)}<br>` : "Signed in<br>"}<span class="acct-role">${SF.esc(SF.auth.roleLabel(s))}</span></div>
-        ${admin ? `<a class="menu-item" role="menuitem" href="manage.html#/projects">Manage all projects</a>
+        ${viewer ? (SF.themePages ? '<a class="menu-item" role="menuitem" href="women.html">Women and girls</a>' : "") : admin ? `<a class="menu-item" role="menuitem" href="manage.html#/projects">Manage all projects</a>
         <a class="menu-item" role="menuitem" href="manage.html#/queue">Review queue</a>
         <a class="menu-item" role="menuitem" href="manage.html#/editors">Approved editors</a>` : `<a class="menu-item" role="menuitem" href="manage.html#/projects">${SF.esc(s.agency || "My agency")} projects</a>
         <a class="menu-item" role="menuitem" href="manage.html#/changes">Sent for review</a>`}
@@ -407,10 +407,12 @@ SF.auth = {
     SF.auth.clear();
     SF.toast("Signed out");
     if (/manage\.html$/.test(location.pathname)) location.href = "./";
-    else SF.auth.drawButton();
+    else { SF.auth.drawButton(); document.dispatchEvent(new CustomEvent("sf-signed-out")); }
   },
-  // The sign-in window: email, then the code from the email
-  open(note) {
+  /* The sign-in window: email, then the code from the email.
+     opts can be a short note, or { intro, refused } to change the wording for a page (for example the theme pages). */
+  open(opts) {
+    const o = typeof opts === "string" ? { note: opts } : (opts || {}), note = o.note;
     let d = document.getElementById("signin");
     if (!d) {
       d = document.createElement("dialog");
@@ -427,7 +429,7 @@ SF.auth = {
     const stepEmail = (msg) => {
       d.innerHTML = `${close}<form class="signin-box" id="si-form" novalidate>
         <h2 id="signin-title">Sign in</h2>
-        <p>${note ? SF.esc(note) + " " : ""}For DSU and approved agency editors. We will email you a 6-digit code. No password needed.</p>
+        <p>${o.intro ? SF.esc(o.intro) : `${note ? SF.esc(note) + " " : ""}For DSU and approved agency editors. We will email you a 6-digit code. No password needed.`}</p>
         <label class="field-label" for="si-email">Work email</label>
         <input class="input" id="si-email" type="email" autocomplete="email" inputmode="email" required value="${SF.esc(email)}">
         <div class="signin-err" id="si-err" role="alert">${msg ? SF.esc(msg) : ""}</div>
@@ -455,8 +457,8 @@ SF.auth = {
     const stepRefused = (msg) => {
       d.innerHTML = `${close}<div class="signin-box">
         <h2 id="signin-title">Sign in</h2>
-        <div class="signin-stop" role="alert"><b>${SF.esc(email)} is not on the approved list.</b><br>${SF.esc(msg.replace(/^This email is not on the approved list\.\s*/, ""))}</div>
-        <p class="signin-small">Partners can still add projects with "Add your project", no sign-in needed.</p>
+        <div class="signin-stop" role="alert"><b>${SF.esc(email)} is not on the approved list.</b><br>${o.refused || SF.esc(msg.replace(/^This email is not on the approved list\.\s*/, ""))}</div>
+        ${o.refused ? "" : '<p class="signin-small">Partners can still add projects with "Add your project", no sign-in needed.</p>'}
         <button type="button" class="btn signin-go" id="si-back">Use a different email</button>
       </div>`;
       wire();
@@ -490,7 +492,7 @@ SF.auth = {
         err.textContent = ""; busy(go, true, "Checking");
         try {
           const s = await SF.auth.post("/api/auth/verify", { email, code });
-          SF.auth.save({ token: s.token, expires: s.expires, email: s.email, name: s.name || "", role: s.role, agency: s.agency || null });
+          SF.auth.save({ token: s.token, expires: s.expires, email: s.email, name: s.name || "", role: s.role, agency: s.agency || null, pages: s.pages || [] });
           d.close();
           SF.auth.drawButton();
           SF.toast("Signed in");

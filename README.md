@@ -129,7 +129,7 @@ Signed-in DSU admins open `manage.html` from the menu under their initials. Thes
 - **Review queue:** new projects from the form and the Excel page, with checks (possible duplicate, organisation without a logo, empty fields). Open one, edit any field, then **Publish to the map**, **Do not publish**, or **Reply to the submitter** (opens your email).
 - **All projects:** every project, including private fields (focal point name and email). Edit and **Save and publish**, hide from the map, or delete. **Download a backup** saves everything as JSON.
 - **Organisations:** logos of lead organisations; a new logo is published straight away.
-- **Approved editors:** who can sign in. Add or remove DSU admins; removing someone signs them out at once.
+- **Approved editors:** who can sign in. Add or remove DSU admins, agency admins and **Early access** viewers; removing someone signs them out at once. Early access lets a person open the Women and girls page on the git page while it is under development (the owners can open it too); it gives no access to projects or the Manage pages.
 - **History:** every change, who made it, and its commit on GitHub, so any change can be undone there.
 
 Publishing writes `data/projects.json`, `data/project-refs.json`, `data/logos.json` and any photos or logos to this repository in one commit. GitHub Pages updates the map within about two minutes. Focal point names and emails stay in the database and are never published. Project numbers are given by the back end when a project is received and never change or get reused.

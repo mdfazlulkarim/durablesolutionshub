@@ -62,6 +62,12 @@
     async function boot() {
       const s = SF.auth.get();
       if (!s) return showLogin();
+      if (s.role === "viewer") {
+        document.getElementById("nav").hidden = true;
+        app.innerHTML = `<div class="card gate"><h1>Manage projects</h1><p>Your account has early access to the Women and girls page only. It cannot see or edit projects.</p>
+          ${SF.themePages ? '<a class="btn btn-primary" href="women.html">Open Women and girls</a>' : '<a class="btn" href="./">Back to the map</a>'}</div>`;
+        return;
+      }
       ME = await api("/me");
       // keep the name, role and agency in this browser up to date
       const m = ME.me || {};
@@ -830,7 +836,7 @@
     async function viewEditors() {
       const { items, me, leads } = await api("/editors");
       const agencies = [...new Set([...(leads || []), ...ORGS.map((o) => o.acronym)])].filter(Boolean).sort();
-      const roleText = (i) => (i.role === "agency" ? `${esc(i.agency)} admin` : "DSU admin");
+      const roleText = (i) => (i.role === "agency" ? `${esc(i.agency)} admin` : i.role === "viewer" ? "Early access" : "DSU admin");
       app.innerHTML = `
         <div><h1>Approved editors</h1><p class="lede2">Only these people can sign in. Anyone else is asked to contact the DSWG or their agency focal point. Removing someone signs them out at once.</p></div>
         <div class="card tbl-card"><div class="tbl-wrap"><table class="adm"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Can see</th><th>Last signed in</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>
@@ -838,7 +844,7 @@
             <td><b style="font-weight:500">${esc(i.name || "")}</b>${i.email === me ? ' <span class="pill2 info">You</span>' : ""}</td>
             <td>${esc(i.email)}</td>
             <td>${roleText(i)}${i.owner ? ' <span class="pill2 mute">Owner</span>' : ""}</td>
-            <td>${i.role === "agency" ? `${esc(i.agency)} projects only; changes go to the review queue` : "All projects; can publish"}</td>
+            <td>${i.role === "agency" ? `${esc(i.agency)} projects only; changes go to the review queue` : i.role === "viewer" ? "The Women and girls page only; no projects" : `All projects; can publish${i.owner ? "; Women and girls page" : ""}`}</td>
             <td>${i.last_signin ? fmtWhen(i.last_signin) : '<span class="muted">Not yet</span>'}</td>
             <td style="white-space:nowrap"><button type="button" class="btn btn-sm" data-edit="${esc(i.email)}">Edit</button>${i.owner ? "" : ` <button type="button" class="btn btn-sm btn-danger" data-rm="${esc(i.email)}">Remove</button>`}</td></tr>`).join("")}
         </tbody></table></div></div>
@@ -846,14 +852,14 @@
           <form class="ed-add" id="ed-form">
             <label class="f">Name<input class="input" id="ed-name" required placeholder="First and last name"></label>
             <label class="f">Work email<input class="input" type="email" id="ed-email" required placeholder="name@un.org"></label>
-            <label class="f sm">Role<select class="input" id="ed-role"><option value="agency">Agency admin</option><option value="admin">DSU admin</option></select></label>
+            <label class="f sm">Role<select class="input" id="ed-role"><option value="agency">Agency admin</option><option value="admin">DSU admin</option><option value="viewer">Early access</option></select></label>
             <label class="f sm" id="ed-agency-wrap">Agency<input class="input" id="ed-agency" list="dl-agencies" placeholder="For example IOM"></label>
             <button type="submit" class="btn btn-primary" id="ed-go">Add</button>
             <button type="button" class="btn" id="ed-cancel" hidden>Cancel</button>
           </form>
           <datalist id="dl-agencies">${agencies.map((a) => `<option value="${esc(a)}">`).join("")}</datalist>
           <div class="err-line" id="ed-err" role="alert"></div>
-          <small class="muted"><b>Agency admin:</b> sees and edits only their agency's projects (the lead organisation), and can add new ones. Their changes wait in your review queue. <b>DSU admin:</b> sees everything and publishes.</small>
+          <small class="muted"><b>Agency admin:</b> sees and edits only their agency's projects (the lead organisation), and can add new ones. Their changes wait in your review queue. <b>DSU admin:</b> sees everything and publishes. <b>Early access:</b> can open the Women and girls page while it is under development; cannot see or edit projects.</small>
         </section>`;
       const g = (id) => document.getElementById(id);
       let editing = null;
@@ -866,7 +872,7 @@
         editing = i;
         g("ed-title").textContent = `Edit ${i.name || i.email}`; g("ed-go").textContent = "Save"; g("ed-cancel").hidden = false;
         g("ed-name").value = i.name || ""; g("ed-email").value = i.email; g("ed-email").readOnly = true;
-        g("ed-role").value = i.role === "agency" ? "agency" : "admin"; g("ed-role").disabled = !!i.owner; g("ed-agency").value = i.agency || "";
+        g("ed-role").value = i.role === "agency" || i.role === "viewer" ? i.role : "admin"; g("ed-role").disabled = !!i.owner; g("ed-agency").value = i.agency || "";
         syncRole(); g("ed-name").focus(); g("ed-form").scrollIntoView({ block: "center" });
       }));
       g("ed-form").addEventListener("submit", async (e) => {
