@@ -1,4 +1,9 @@
 {
+ "DRC": {
+  "full": "assets/img/logos/DRC.jpg",
+  "mark": "assets/img/logos/DRC-mark.jpg",
+  "name": "Danish Refugee Council"
+ },
  "IOM": {
   "full": "assets/img/logos/IOM.png",
   "mark": "assets/img/logos/IOM-mark.png",

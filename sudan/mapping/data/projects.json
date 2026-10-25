@@ -1,6 +1,68 @@
 {
- "lastUpdated": "2026-10-21",
+ "lastUpdated": "2026-10-25",
  "projects": [
+  {
+   "id": "drc-h-e-r-hope-empowerment-resilience",
+   "name": "H.E.R (Hope Empowerment Resilience)",
+   "description": "The project is a two-year action implemented by a consortium of 3 partners – Zenab, MTI and DRC – with DRC as the consortium lead. The project integrates health, nutrition, livelihoods, protection and GBV and will target 3 localities of Al Fashaga (Um Gargour refugee camp), Galabat Gharabiya (Al Huri and Sabone) and Galabat Sharqiah (Rashid and Hamra)",
+   "interventionTypes": [
+    "Basic services rehabilitation",
+    "Livelihoods and cash-for-work",
+    "Legal aid and documentation",
+    "Social cohesion and peacebuilding"
+   ],
+   "lead": "DRC",
+   "orgType": "International NGO",
+   "leadership": [],
+   "partners": [
+    "MTI"
+   ],
+   "partnerTypes": [],
+   "nationwide": false,
+   "states": [
+    "Gedaref"
+   ],
+   "localities": [
+    "Al Galabat Al Gharbyah - Kassab",
+    "Galabat Ash-Shargiah"
+   ],
+   "criteria": [
+    1,
+    2,
+    3,
+    8
+   ],
+   "coordination": "Protection Cluster",
+   "start": "2026-04-01",
+   "end": "2027-11-30",
+   "reportedStatus": "Ongoing",
+   "budget": 3126298,
+   "share": 1,
+   "dsFunding": 3126298,
+   "donor": "AFD",
+   "donors": [
+    {
+     "name": "AFD",
+     "amount": 3126298
+    }
+   ],
+   "people": {
+    "total": 19487,
+    "idps": 9562,
+    "returnees": null,
+    "refugees": 1687,
+    "host": 8238,
+    "other": null
+   },
+   "femaleShare": 0.8,
+   "pwdShare": 0.05,
+   "pwdFemaleShare": 0.8,
+   "peopleSex": null,
+   "remarks": null,
+   "photos": [],
+   "leadName": "DRC, Danish Refugee Council",
+   "ref": "SD-044-DRC-26-27"
+  },
   {
    "id": "iom-ai-powered-preparedness-and-anticipatory-actions",
    "name": "AI-Powered Preparedness and Anticipatory Actions",
