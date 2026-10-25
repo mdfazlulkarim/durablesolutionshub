@@ -2,6 +2,67 @@
  "lastUpdated": "2026-10-25",
  "projects": [
   {
+   "id": "drc-empower-enabling-market-pathways-and-opportunities-for-work-econom",
+   "name": "EMPOWER (Enabling Market Pathways and Opportunities for Work, Economic Recovery and Resilience)",
+   "description": "This action is strategically designed to address the humanitarian and economic fallout of the conflict by focusing on the protection and economic empowerment of Sudan's youth.",
+   "interventionTypes": [
+    "Basic services rehabilitation",
+    "Livelihoods and cash-for-work",
+    "Social cohesion and peacebuilding"
+   ],
+   "lead": "DRC",
+   "orgType": "International NGO",
+   "leadership": [],
+   "partners": [
+    "NIDAA"
+   ],
+   "partnerTypes": [],
+   "nationwide": false,
+   "states": [
+    "Gedaref"
+   ],
+   "localities": [
+    "Madeinat Al Gedaref",
+    "Wasat Al Gedaref"
+   ],
+   "criteria": [
+    1,
+    2,
+    3,
+    7
+   ],
+   "coordination": "Food Security and Livelihoods Cluster",
+   "start": "2026-06-01",
+   "end": "2028-06-30",
+   "reportedStatus": "Ongoing",
+   "budget": 3126298,
+   "share": 1,
+   "dsFunding": 3126298,
+   "donor": "European Commission",
+   "donors": [
+    {
+     "name": "European Commission",
+     "amount": null
+    }
+   ],
+   "people": {
+    "total": 6158,
+    "idps": 3695,
+    "returnees": null,
+    "refugees": null,
+    "host": 2463,
+    "other": null
+   },
+   "femaleShare": 0.51,
+   "pwdShare": 0.05,
+   "pwdFemaleShare": 0.51,
+   "peopleSex": null,
+   "remarks": null,
+   "photos": [],
+   "leadName": "DRC, Danish Refugee Council",
+   "ref": "SD-045-DRC-26-28"
+  },
+  {
    "id": "drc-h-e-r-hope-empowerment-resilience",
    "name": "H.E.R (Hope Empowerment Resilience)",
    "description": "The project is a two-year action implemented by a consortium of 3 partners – Zenab, MTI and DRC – with DRC as the consortium lead. The project integrates health, nutrition, livelihoods, protection and GBV and will target 3 localities of Al Fashaga (Um Gargour refugee camp), Galabat Gharabiya (Al Huri and Sabone) and Galabat Sharqiah (Rashid and Hamra)",
