@@ -1,6 +1,71 @@
 {
- "lastUpdated": "2026-10-25",
+ "lastUpdated": "2026-10-29",
  "projects": [
+  {
+   "id": "adra-strengthening-community-engagement-and-empowerment-in-darfur-scee",
+   "name": "Strengthening community engagement and empowerment in Darfur (SCEED) and climate adaptation",
+   "description": "SCEED  is a four-year project building small farmers' resilience through:\n• Building farmers' capacities with modern farming techniques using the FFS Approach.\n• Boosting farmers' marketing techniques through the FMS Approach.\n• Providing market-driven training and skills.\n• Providing life-saving assistance through MPCA.\n• Linking farmers with the early warning system and weather forecast",
+   "interventionTypes": [
+    "Basic services rehabilitation",
+    "Livelihoods and cash-for-work"
+   ],
+   "lead": "ADRA",
+   "orgType": "International NGO",
+   "leadership": [],
+   "partners": [],
+   "partnerTypes": [],
+   "nationwide": false,
+   "states": [
+    "Blue Nile",
+    "North Darfur",
+    "West Darfur"
+   ],
+   "localities": [
+    "Al Kurmuk",
+    "Ar Rusayris",
+    "Ed Damazine",
+    "Kernoi",
+    "Tawila",
+    "Ag Geneina",
+    "Beida",
+    "Foro Baranga",
+    "Kereneik"
+   ],
+   "criteria": [
+    1,
+    3
+   ],
+   "coordination": "Food Security and Livelihoods Cluster",
+   "start": "2026-01-01",
+   "end": "2026-12-31",
+   "reportedStatus": "Ongoing",
+   "budget": 2250960,
+   "share": 0,
+   "dsFunding": 0,
+   "donor": "DANIDA",
+   "donors": [
+    {
+     "name": "DANIDA",
+     "amount": null
+    }
+   ],
+   "people": {
+    "total": 10120,
+    "idps": 3500,
+    "returnees": 6620,
+    "refugees": 0,
+    "host": null,
+    "other": null
+   },
+   "femaleShare": 0.77,
+   "pwdShare": 0.02,
+   "pwdFemaleShare": 0.51,
+   "peopleSex": null,
+   "remarks": null,
+   "photos": [],
+   "leadName": "ADRA, Adventist Development and Relief Agency",
+   "ref": "SD-046-ADRA-26-26"
+  },
   {
    "id": "drc-empower-enabling-market-pathways-and-opportunities-for-work-econom",
    "name": "EMPOWER (Enabling Market Pathways and Opportunities for Work, Economic Recovery and Resilience)",

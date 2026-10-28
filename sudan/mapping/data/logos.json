@@ -1,4 +1,9 @@
 {
+ "ADRA": {
+  "full": "assets/img/logos/ADRA.jpg",
+  "mark": "assets/img/logos/ADRA-mark.jpg",
+  "name": "Adventist Development and Relief Agency"
+ },
  "DRC": {
   "full": "assets/img/logos/DRC.jpg",
   "mark": "assets/img/logos/DRC-mark.jpg",
