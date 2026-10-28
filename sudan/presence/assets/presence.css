@@ -108,3 +108,13 @@
   .op-search { max-width: none; width: 100%; }
 }
 .op-of { font-size: 13px; font-weight: 400; color: var(--muted); }
+
+/* OCHA icons */
+.op-ico { display: inline-grid; place-items: center; color: var(--brand); }
+.op-ico svg { width: 16px; height: 16px; }
+.opt .sw.op-ico svg { width: 16px; height: 16px; }
+.op-panel .bar-row.crit { grid-template-columns: 18px minmax(0, 1fr) 70px 30px; }
+.op-panel .bar-row.crit .op-ico svg { width: 15px; height: 15px; }
+.op-chip { display: inline-flex; align-items: center; gap: 4px; }
+.op-chip svg { width: 12px; height: 12px; color: var(--brand); flex: none; }
+.kpi-ico svg { max-width: 17px; max-height: 17px; }

@@ -18,12 +18,26 @@
   const plural = (n, one, many) => `${fmt(n)} ${n === 1 ? one : many || one + "s"}`;
   const TYPE_LABEL = { "UN Agency": "UN agencies", INGO: "International NGOs", NNGO: "National NGOs", "Red Cross": "Red Cross / Red Crescent", Other: "Other" };
   const TYPE_SHORT = { "UN Agency": ["UN agency", "UN agencies"], INGO: ["INGO", "INGOs"], NNGO: ["NNGO", "NNGOs"], "Red Cross": ["Red Cross / Red Crescent", "Red Cross / Red Crescent"], Other: ["other", "other"] };
-  const ICON = {
-    people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.8"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 4.9"/></svg>',
-    layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
-    map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m9 4-6 2.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5M15 6.5V20"/></svg>',
-    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg>',
+  // OCHA Humanitarian Icons (assets/icons.js)
+  const icon = (k) => (SF.OCHA_OP && SF.OCHA_OP[k]) || "";
+  // OCHA icon and short name for each cluster in the 3W
+  const CLUSTER_META = {
+    "Health": ["health", "Health"],
+    "Protection": ["protection", "Protection"],
+    "Nutrition": ["nutrition", "Nutrition"],
+    "Food Security and Livelihoods": ["food-security", "FSL"],
+    "Multi-Purpose Cash": ["cash", "MPCA"],
+    "Education": ["education", "Education"],
+    "WASH": ["wash", "WASH"],
+    "Refugee Consultative Forum": ["refugee", "RCF"],
+    "Shelter and NFIs": ["shelter", "Shelter/NFIs"],
+    "Logistics": ["logistics", "Logistics"],
+    "Site Management": ["cccm", "Site Mgmt"],
+    "Emergency Telecommunications": ["telecom", "ETC"],
+    "Coordination and Common Services": ["coordination", "Coordination"],
   };
+  const clusterIcon = (c) => icon((CLUSTER_META[D.clusters[c]] || ["multi-cluster"])[0]);
+  const clusterShort = (c) => (CLUSTER_META[D.clusters[c]] || [null, D.clusters[c]])[1];
 
   /* ================= access code ================= */
   const normCode = (c) => String(c || "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -84,7 +98,7 @@
 
   /* ================= data ================= */
   let D, N, RM, RL, RC, RO, LOC_STATE, COUNTED, GEO, LGEO, AREAS, LOCS, LOC_BY_DATA, SFP = null;
-  const S = { month: -1, clusters: new Set(), types: new Set(), org: -1, level: "states", zoom: null, sel: null, ds: false, q: "", sort: { key: "locs", dir: -1 }, showAll: false };
+  const S = { month: -1, clusters: new Set(), types: new Set(), org: -1, level: "states", zoom: null, sel: null, ds: true, q: "", sort: { key: "locs", dir: -1 }, showAll: false };
 
   function prepare(data) {
     D = data;
@@ -157,8 +171,8 @@
       order.map((i) => { const x = D.orgs[i]; return `<option value="${i}">${esc(x[1] ? `${x[1]}: ${x[0]}` : x[0])}</option>`; }).join("");
     o.addEventListener("change", () => { S.org = +o.value; render(); });
 
-    const opt = (group, i, label) => `<label class="opt no-sw"><input type="checkbox" data-g="${group}" value="${i}"><span>${esc(label)}</span><span class="num" data-n="${group}-${i}"></span></label>`;
-    $("f-clusters").innerHTML = D.clusters.map((c, i) => opt("clusters", i, c)).join("");
+    const opt = (group, i, label, ico) => `<label class="opt${ico ? "" : " no-sw"}"><input type="checkbox" data-g="${group}" value="${i}">${ico ? `<span class="sw op-ico">${ico}</span>` : ""}<span>${esc(label)}</span><span class="num" data-n="${group}-${i}"></span></label>`;
+    $("f-clusters").innerHTML = D.clusters.map((c, i) => opt("clusters", i, c, clusterIcon(i))).join("");
     $("f-types").innerHTML = D.types.map((t, i) => opt("types", i, TYPE_LABEL[t] || t)).join("");
     document.querySelectorAll(".filters input[type=checkbox]").forEach((cb) => cb.addEventListener("change", () => {
       const set = S[cb.dataset.g];
@@ -220,11 +234,11 @@
     const typeLine = Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t, n]) => `${fmt(n)} ${(TYPE_SHORT[t] || [t, t])[n === 1 ? 0 : 1]}`).join(", ");
     const card = (ico, label, value, sub) => `<div class="card kpi"><div class="kpi-label"><span class="kpi-ico">${ico}</span>${esc(label)}</div><div class="kpi-value">${value}</div><div class="kpi-sub">${esc(sub)}</div></div>`;
     $("kpis").innerHTML =
-      card(ICON.people, "Organisations", fmt(orgs.size), typeLine || "None reported") +
-      card(ICON.layers, "Clusters", fmt(clusters.size), `of ${D.clusters.length} in the data`) +
-      card(ICON.map, "States", fmt(states.size - (states.has(ABYEI) ? 1 : 0)), `with reported presence${states.has(ABYEI) ? ", plus Abyei PCA" : ""}`) +
-      card(SF.icons.pin, "Localities", fmt(locs.size), `with reported presence`) +
-      card(ICON.target, "In ADSWG states", fmt(adswg.size), "organisations in the five states");
+      card(icon("partnership"), "Organisations", fmt(orgs.size), typeLine || "None reported") +
+      card(icon("multi-cluster"), "Clusters", fmt(clusters.size), `of ${D.clusters.length} in the data`) +
+      card(icon("map"), "States", fmt(states.size - (states.has(ABYEI) ? 1 : 0)), `with reported presence${states.has(ABYEI) ? ", plus Abyei PCA" : ""}`) +
+      card(icon("location"), "Localities", fmt(locs.size), `with reported presence`) +
+      card(icon("people-targeted"), "In ADSWG states", fmt(adswg.size), "organisations in the five states");
   }
 
   /* ================= map ================= */
@@ -382,7 +396,7 @@
     Object.values(M.areas).forEach(({ label, a }) => {
       const hasDs = DSC && !S.zoom && DSC.st[a.name];
       label.setAttribute("x", a.x);
-      label.setAttribute("y", a.y + (hasDs ? 21 : a.abyei ? 22 : 4) / k);
+      label.setAttribute("y", a.y + (hasDs ? 24 : a.abyei ? 22 : 4) / k);
       label.setAttribute("font-size", (a.abyei ? 11 : 11.5) / k);
       label.style.strokeWidth = `${3 / k}px`;
       label.style.display = S.zoom ? "none" : "";
@@ -397,7 +411,7 @@
       if (!on) return;
       const hasDs = DSC && DSC.lc[l.key];
       m.label.setAttribute("font-size", 10 / k);
-      m.label.setAttribute("y", l.y + (hasDs ? 19 : 3.5) / k);
+      m.label.setAttribute("y", l.y + (hasDs ? 21 : 3.5) / k);
       m.label.style.strokeWidth = `${2.6 / k}px`;
     });
     M.ds.querySelectorAll(".ds-mark").forEach((g) => {
@@ -457,11 +471,12 @@
   }
   let MAPSTATE = null;
 
-  /* Solutions Footprint projects (public data of the Solutions Footprint) */
+  /* Ongoing projects on the Solutions Footprint (its public data). "Ongoing" follows the Solutions Footprint:
+     started and not yet ended, by the project dates. */
   async function loadFootprint() {
     try {
       const d = await fetch("../mapping/data/projects.json", { cache: "no-cache" }).then((r) => r.json());
-      SFP = (d.projects || d).filter((p) => p && p.name);
+      SFP = (d.projects || d).filter((p) => p && p.name).map((p) => SF.enrich(p)).filter((p) => p.status === "Ongoing");
     } catch (e) { SFP = []; SF.toast("The Solutions Footprint projects could not be loaded."); }
   }
   function footprintIn(area) {
@@ -488,21 +503,21 @@
     const mark = (x, y, n, title, onClick) => {
       const g = el("g", { class: "ds-mark", "data-x": x, "data-y": y, role: "img", "aria-label": title }, M.ds);
       el("title", {}, g).textContent = title;
-      el("circle", { r: n > 9 ? 10 : 8.5, class: "ds-dot" }, g);
-      el("text", { class: "ds-num", dy: "0.35em", "font-size": 10.5 }, g).textContent = n;
+      el("circle", { r: n > 9 ? 12 : 10.5, class: "ds-dot" }, g);
+      el("text", { class: "ds-num", dy: "0.35em", "font-size": 12 }, g).textContent = n;
       g.addEventListener("click", onClick);
     };
     if (!S.zoom) {
       Object.entries(DSC.st).forEach(([s, n]) => {
         const a = AREAS[s];
-        if (a) mark(a.x, a.y - 2, n, `${s}: ${plural(n, "Solutions Footprint project")}`, () => pickState(s));
+        if (a) mark(a.x, a.y - 2, n, `${s}: ${plural(n, "ongoing project")}`, () => pickState(s));
       });
     } else {
       LOCS.forEach((l, i) => {
         if (l.state !== S.zoom || !l.path || !DSC.lc[l.key]) return;
         // only projects in this state that name this locality
         const n = SFP.filter((p) => !p.nationwide && (p.states || []).includes(l.state) && (p.localities || []).includes(l.key)).length;
-        if (n) mark(l.x, l.y - 4, n, `${l.name}: ${plural(n, "Solutions Footprint project")}`, () => pickLocality(i));
+        if (n) mark(l.x, l.y - 4, n, `${l.name}: ${plural(n, "ongoing project")}`, () => pickLocality(i));
       });
     }
   }
@@ -516,7 +531,7 @@
       name = what.name;
       n = MAPSTATE.st[name] ? MAPSTATE.st[name].size : 0;
       sub = ADSWG.includes(name) ? "ADSWG state" : "";
-      if (DSC && DSC.st[name]) extra = `<br>${plural(DSC.st[name], "Solutions Footprint project")}`;
+      if (DSC && DSC.st[name]) extra = `<br>${plural(DSC.st[name], "ongoing project")} (Solutions Footprint)`;
     } else {
       const l = LOCS[what.i];
       name = l.name; sub = l.state;
@@ -533,8 +548,8 @@
 
   /* ================= side panel ================= */
   function barRows(entries, max, colour = "var(--brand)") {
-    return entries.map(([label, n]) => `
-      <div class="bar-row"><span title="${esc(label)}">${esc(label)}</span><div class="bar"><i style="width:${max ? Math.max(3, (n / max) * 100) : 0}%;background:${colour}"></i></div><span class="n">${fmt(n)}</span></div>`).join("");
+    return entries.map(([label, n, ico]) => `
+      <div class="bar-row${ico ? " crit" : ""}">${ico ? `<span class="op-ico">${ico}</span>` : ""}<span title="${esc(label)}">${esc(label)}</span><div class="bar"><i style="width:${max ? Math.max(3, (n / max) * 100) : 0}%;background:${colour}"></i></div><span class="n">${fmt(n)}</span></div>`).join("");
   }
   function renderPanel(rows) {
     const area = selArea();
@@ -565,7 +580,7 @@
     const areaOpts = [`<option value="">All of Sudan</option>`].concat(Object.keys(AREAS).sort((a, b) => a.localeCompare(b))
       .map((n) => `<option value="${esc(n)}"${S.zoom === n ? " selected" : ""}>${esc(n)}</option>`)).join("");
 
-    const clusterRows = Object.entries(byCluster).map(([c, s]) => [D.clusters[c], s.size]).sort((a, b) => b[1] - a[1]);
+    const clusterRows = Object.entries(byCluster).map(([c, s]) => [D.clusters[c], s.size, clusterIcon(+c)]).sort((a, b) => b[1] - a[1]);
     const typeRows = Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => [TYPE_LABEL[t] || t, n]);
     const top = [...orgs].map((o) => ({ o, n: S.sel && S.sel.kind === "loc" ? orgClusters[o].size : orgLocs[o].size }))
       .sort((a, b) => b.n - a.n || (D.orgs[a.o][1] || D.orgs[a.o][0]).localeCompare(D.orgs[b.o][1] || D.orgs[b.o][0])).slice(0, 8);
@@ -582,8 +597,8 @@
     if (S.ds && SFP) {
       const { list, nationwide } = footprintIn(area);
       const show = list.slice(0, 5);
-      ds = `<div class="op-ds-box"><h3>Solutions Footprint</h3>
-        <div>${list.length ? plural(list.length, "project") : "No projects"} ${area ? (S.sel.kind === "loc" ? "naming this locality" : "in this state") : "in states"}${nationwide.length ? `, plus ${plural(nationwide.length, "nationwide project")}` : ""}.</div>
+      ds = `<div class="op-ds-box"><h3>Ongoing projects (Solutions Footprint)</h3>
+        <div>${list.length ? plural(list.length, "ongoing project") : "No ongoing projects"} ${area ? (S.sel.kind === "loc" ? "naming this locality" : "in this state") : "in states"}${nationwide.length ? `, plus ${fmt(nationwide.length)} nationwide` : ""}.</div>
         ${show.length ? `<ul>${show.map((p) => `<li>${esc(p.name)} <span class="gap-word">(${esc(p.lead || "")})</span></li>`).join("")}</ul>` : ""}
         <div style="margin-top:6px"><a href="../mapping/">Open the Solutions Footprint</a></div></div>`;
     }
@@ -672,7 +687,7 @@
           ? `<button type="button" class="op-pick" data-org="${r.o}" title="Show only this organisation">${esc(o[0])}</button>${o[1] ? `<span class="o-acr">${esc(o[1])}</span>` : ""}`
           : `<span class="o-name">${esc(o[0])}</span><span class="o-acr">not counted as an organisation</span>`;
         return `<tr><td>${nm}</td><td class="o-type">${esc(D.types[o[2]])}</td>
-          <td><div class="op-chips">${[...r.clusters].sort((a, b) => a - b).map((c) => `<span class="op-chip">${esc(D.clusters[c])}</span>`).join("")}</div></td>
+          <td><div class="op-chips">${[...r.clusters].sort((a, b) => a - b).map((c) => `<span class="op-chip" title="${esc(D.clusters[c])}">${clusterIcon(c)}${esc(clusterShort(c))}</span>`).join("")}</div></td>
           ${inLoc ? "" : `<td class="num">${fmt(r.states.size)}</td><td class="num">${fmt(r.locs.size)}</td>`}<td class="num">${fmt(r.months.size)}</td></tr>`;
       }).join("")}</tbody>` : `<tbody><tr><td class="op-empty">No organisations match.</td></tr></tbody>`;
     $("org-more").innerHTML = total > LIMIT
@@ -701,7 +716,7 @@
         <li><b>What is counted:</b> an organisation is counted in a locality when it reported activities there for at least one cluster, in the selected months. With all months selected, an organisation counts once even if it reported in several months.</li>
         <li><b>Coverage, not presence:</b> partner numbers reflect programmatic coverage and do not necessarily indicate physical presence.</li>
         <li><b>Other totals:</b> OCHA's operational presence dashboard can show different totals, as it may cover a longer period and partners reporting outside the response plan.</li>
-        <li><b>Solutions Footprint projects:</b> the switch above the map adds the projects published on the <a href="../mapping/">Solutions Footprint</a>, by state, and by locality when a project names its localities.</li>
+        <li><b>Ongoing projects:</b> the green circles show the number of ongoing projects on the <a href="../mapping/">Solutions Footprint</a> (started and not yet ended), by state, and by locality when a project names its localities. Nationwide projects are counted in the side panel. The switch above the map hides them.</li>
         ${(D.notes || []).map((n) => `<li>${esc(n)}</li>`).join("")}
         <li><b>Access:</b> this page opens only with the access code. Please share the code with coordination partners only.</li>
       </ul>`;
@@ -748,6 +763,7 @@
       [GEO, LGEO] = await Promise.all([
         fetch("../mapping/data/geo.json").then((r) => r.json()),
         fetch("data/localities-geo.json").then((r) => r.json()),
+        loadFootprint(),
       ]);
     } catch (e) {
       started = false;
