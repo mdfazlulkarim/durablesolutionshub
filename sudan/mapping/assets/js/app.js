@@ -1091,6 +1091,8 @@
   function renderAgencies() {
     const ags = agenciesIn(ALL);
     const strip = document.getElementById("logo-strip");
+    // tiles get smaller as more organisations join: full size up to 6, smaller from 7, smaller again from 11
+    strip.dataset.size = ags.length > 10 ? "sm" : ags.length > 6 ? "md" : "";
     strip.innerHTML = ags.map(([org, list]) => `<button type="button" class="logo-tile" data-org="${esc(org)}" title="${esc(org)}: ${list.length} project${list.length === 1 ? "" : "s"}" aria-label="${esc(org)}, ${list.length} projects">${SF.logoImg(org, "full")}</button>`).join("");
     strip.querySelectorAll(".logo-tile[data-org]").forEach((b) => b.addEventListener("click", () => {
       const org = b.dataset.org;

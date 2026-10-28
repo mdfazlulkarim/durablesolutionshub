@@ -374,6 +374,14 @@ input[type="range"] { width: 100%; accent-color: var(--brand); margin: 10px 0 4p
 .logo-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(20, 30, 50, 0.1); border-color: var(--brand); }
 .logo-tile img { max-height: 56px; max-width: 190px; display: block; }
 .logo-tile span { font-weight: 700; color: #1c2230; }
+/* more organisations, smaller tiles (set in app.js: 7 to 10 = md, 11 or more = sm) */
+.logo-strip[data-size="md"] { gap: 10px; }
+.logo-strip[data-size="md"] .logo-tile { height: 68px; min-width: 118px; padding: 10px 14px; }
+.logo-strip[data-size="md"] .logo-tile img { max-height: 42px; max-width: 150px; }
+.logo-strip[data-size="sm"] { gap: 8px; }
+.logo-strip[data-size="sm"] .logo-tile { height: 56px; min-width: 92px; padding: 8px 12px; }
+.logo-strip[data-size="sm"] .logo-tile img { max-height: 32px; max-width: 118px; }
+.logo-strip[data-size="sm"] .logo-tile span { font-size: 13px; }
 .logo-tile.is-add { background: var(--brand-tint-2); border: 1px dashed var(--brand-line); color: var(--brand); text-decoration: none; font-weight: 600; gap: 4px; text-align: center; font-size: 13.5px; }
 .logo-tile.is-add svg { width: 22px; height: 22px; }
 
