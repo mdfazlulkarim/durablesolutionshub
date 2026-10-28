@@ -1086,8 +1086,10 @@
   }
 
   /* ---------------- contributing agencies ---------------- */
+  // Every organisation with projects on the map, most projects first (ties in alphabetical order).
+  // New organisations appear by themselves as their projects are published.
   function renderAgencies() {
-    const ags = agenciesIn(ALL.filter((p) => p.orgType === "UN agency"));
+    const ags = agenciesIn(ALL);
     const strip = document.getElementById("logo-strip");
     strip.innerHTML = ags.map(([org, list]) => `<button type="button" class="logo-tile" data-org="${esc(org)}" title="${esc(org)}: ${list.length} project${list.length === 1 ? "" : "s"}" aria-label="${esc(org)}, ${list.length} projects">${SF.logoImg(org, "full")}</button>`).join("");
     strip.querySelectorAll(".logo-tile[data-org]").forEach((b) => b.addEventListener("click", () => {
