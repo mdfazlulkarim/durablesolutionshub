@@ -10,6 +10,7 @@ Live site: `https://durablesolutionshub.org/sudan/mapping/`
 /                    forwards to /sudan/mapping/ (as does any unknown address, through 404.html)
 /sudan/              forwards to /sudan/mapping/
 /sudan/mapping/      the Solutions Footprint for Sudan: pages, assets, data and data scripts
+/sudan/presence/     Operational Presence (OCHA 3W), a standalone page that opens with an access code (see its README)
 /worker/             back end on Cloudflare (review queue, admin pages, publishing)
 /CNAME               the custom domain for GitHub Pages
 ```

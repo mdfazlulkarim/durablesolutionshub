@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operational Presence | Durable Solutions Hub | Sudan</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Who is doing what, where in Sudan: humanitarian operational presence by state and locality, for coordination partners.">
+  <script>try{var t=localStorage.getItem("sf-theme")}catch(e){}document.documentElement.dataset.theme=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../mapping/assets/css/style.css?v=20261029a">
+  <link rel="stylesheet" href="assets/presence.css?v=20261029a">
+  <link rel="icon" href="../mapping/assets/img/favicon.svg" type="image/svg+xml">
+</head>
+<body class="op">
+  <!-- Access code: the data on this page is stored encrypted and opens only with the code -->
+  <main class="op-gate" id="gate">
+    <form class="card op-gate-card" id="gate-form" autocomplete="on">
+      <img class="op-gate-logo" src="../mapping/assets/img/un-sudan-logo.png" alt="United Nations Sudan" width="153" height="42">
+      <p class="brand-kicker">Durable Solutions Hub | Sudan</p>
+      <h1>Operational Presence</h1>
+      <p class="op-gate-lead">Who is doing what, where, by state and locality. This page is for coordination partners.</p>
+      <label class="field-label" for="gate-code">Access code</label>
+      <div class="op-gate-row">
+        <input class="input" id="gate-code" name="password" type="password" autocomplete="current-password" required spellcheck="false" autocapitalize="off">
+        <button type="button" class="btn op-show" id="gate-show" aria-pressed="false">Show</button>
+      </div>
+      <p class="op-gate-err" id="gate-err" role="alert" hidden></p>
+      <button type="submit" class="btn btn-primary op-gate-go" id="gate-go">Open</button>
+      <p class="op-gate-help">No code? Contact <a href="mailto:dswg.sd@undp.org">dswg.sd@undp.org</a></p>
+    </form>
+  </main>
+
+  <div id="app" hidden>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="./" aria-label="Operational Presence">
+          <img class="brand-logo" src="../mapping/assets/img/un-sudan-logo.png" alt="United Nations Sudan" width="153" height="42">
+          <span class="brand-divider" aria-hidden="true"></span>
+          <span>
+            <span class="brand-kicker">Durable Solutions Hub | Sudan</span><br>
+            <span class="brand-title">Operational Presence</span>
+          </span>
+        </a>
+        <div class="header-actions">
+          <a class="btn" href="../mapping/">Solutions Footprint</a>
+          <button type="button" class="btn icon-toggle" id="theme-btn"></button>
+          <button type="button" class="btn" id="lock-btn">Lock</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page" id="main">
+      <aside class="card filters" aria-label="Filters">
+        <div class="filters-head">
+          <h2>Filters</h2>
+          <button type="button" class="link-btn" id="clear-all">Clear all</button>
+        </div>
+        <div class="filter-block">
+          <label class="field-label" for="f-month">Month</label>
+          <select class="input" id="f-month"></select>
+        </div>
+        <div class="filter-block">
+          <label class="field-label" for="f-org">Organisation</label>
+          <select class="input" id="f-org"></select>
+        </div>
+        <details class="filter-group" open>
+          <summary>Cluster</summary>
+          <div class="options" id="f-clusters"></div>
+        </details>
+        <details class="filter-group" open>
+          <summary>Organisation type</summary>
+          <div class="options" id="f-types"></div>
+        </details>
+      </aside>
+
+      <div class="content">
+        <section class="kpis" id="kpis" aria-label="Summary figures"></section>
+        <p class="note-line" id="note-line"></p>
+
+        <div class="showing-row">
+          <div class="showing" id="showing" aria-live="polite"></div>
+        </div>
+
+        <div class="map-row">
+          <section class="card map-card" aria-labelledby="map-title">
+            <div class="map-toolbar">
+              <h2 id="map-title">Organisations by state</h2>
+              <div class="tool">
+                <span class="toolbar-label" id="level-label">Level</span>
+                <div class="seg" role="group" aria-labelledby="level-label" id="level">
+                  <button type="button" data-v="states" aria-pressed="true">States</button>
+                  <button type="button" data-v="localities" aria-pressed="false">Localities</button>
+                </div>
+              </div>
+              <label class="op-switch"><input type="checkbox" id="ds-toggle"> <span>Solutions Footprint projects</span></label>
+            </div>
+
+            <div class="map-wrap" id="map-wrap">
+              <button type="button" class="btn btn-sm map-back" id="map-back" hidden></button>
+              <svg class="map-svg op-map" id="map" role="group" aria-label="Map of Sudan"></svg>
+              <div class="map-tip" id="map-tip" hidden></div>
+              <div class="map-legend" id="map-legend">
+                <div class="legend-top">
+                  <span class="legend-head">Legend</span>
+                  <button type="button" class="link-btn" id="legend-toggle" aria-expanded="true" aria-controls="op-legend-body">Hide legend</button>
+                </div>
+                <div id="op-legend-body" class="op-legend-body">
+                  <div class="legend-row">
+                    <span class="legend-title">Number of organisations</span>
+                    <span class="legend-bins" id="legend-bins"></span>
+                  </div>
+                  <div class="legend-row op-legend-keys">
+                    <span class="op-key"><svg viewBox="0 0 28 14" aria-hidden="true"><rect x="2" y="2" width="24" height="10" rx="2" class="op-key-adswg"/></svg>ADSWG state</span>
+                    <span class="op-key" id="legend-ds" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" class="op-key-ds"/></svg>Solutions Footprint projects</span>
+                  </div>
+                </div>
+              </div>
+              <div class="map-disclaimer">The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations. Final boundary between the Republic of Sudan and the Republic of South Sudan has not yet been determined. Final status of the Abyei area is not yet determined.</div>
+            </div>
+          </section>
+
+          <aside class="card state-panel" id="panel" aria-live="polite" aria-label="Selected area"></aside>
+        </div>
+
+        <section class="card op-card" aria-labelledby="trend-title">
+          <div class="op-card-head">
+            <h2 id="trend-title">Organisations reporting per month</h2>
+            <small id="trend-sub"></small>
+          </div>
+          <div class="op-trend" id="trend"></div>
+        </section>
+
+        <section class="card op-card" aria-labelledby="orgs-title">
+          <div class="op-card-head">
+            <h2 id="orgs-title">Who is where</h2>
+            <input class="input op-search" id="org-search" type="search" placeholder="Search organisations" autocomplete="off" aria-label="Search organisations">
+          </div>
+          <div class="op-table-wrap">
+            <table class="op-table" id="org-table"></table>
+          </div>
+          <div class="op-more" id="org-more"></div>
+        </section>
+
+        <details class="card op-card op-about" id="about">
+          <summary><h2>About the data</h2></summary>
+          <div id="about-body"></div>
+        </details>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span class="grow" id="footer-text">Operational Presence, Durable Solutions Hub | Sudan.</span>
+        <span>Contact: <a href="mailto:dswg.sd@undp.org">dswg.sd@undp.org</a></span>
+        <span class="social">
+          <a href="https://github.com/mdfazlulkarim" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub" id="gh-link"></a>
+          <a href="https://www.linkedin.com/in/fazlulkarim/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn" id="li-link"></a>
+        </span>
+        <span class="footer-credits">Data: OCHA Sudan and humanitarian partners (3W). Boundaries: OCHA administrative boundaries for Sudan via geoBoundaries (CC BY 3.0 IGO), and Natural Earth.</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../mapping/assets/js/common.js?v=20261029a"></script>
+  <script src="assets/presence.js?v=20261029a"></script>
+</body>
+</html>

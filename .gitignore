@@ -6,3 +6,4 @@ __pycache__/
 worker/.dev.vars
 worker/.wrangler/
 worker/node_modules/
+sudan/presence/data/source/
