@@ -2,6 +2,63 @@
  "lastUpdated": "2026-10-29",
  "projects": [
   {
+   "id": "adra-female-literacy-and-opportunities-for-work-flow",
+   "name": "Female Literacy and Opportunities for Work (FLOW)",
+   "description": "The Female Literacy and Opportunities for Work (FLOW) Project aims to improve the socio-economic status of vulnerable women through literacy education and livelihood support interventions. Many women participating in literacy circles face challenges related to food insecurity, limited income opportunities, and inadequate access to agricultural inputs and technical knowledge. To address these challenges, the project will implement a home farming initiative targeting women enrolled in literacy circles in Khartoum State.",
+   "interventionTypes": [
+    "Basic services rehabilitation",
+    "Livelihoods and cash-for-work"
+   ],
+   "lead": "ADRA",
+   "orgType": "International NGO",
+   "leadership": [],
+   "partners": [
+    "CORD"
+   ],
+   "partnerTypes": [],
+   "nationwide": false,
+   "states": [
+    "Khartoum"
+   ],
+   "localities": [
+    "Jebel Awlia",
+    "Sharg An Neel"
+   ],
+   "criteria": [
+    3
+   ],
+   "coordination": "Education Cluster",
+   "start": "2025-12-01",
+   "end": "2027-11-30",
+   "reportedStatus": "Ongoing",
+   "budget": 422000,
+   "share": 0,
+   "dsFunding": 0,
+   "donor": "Diakonie and Development for Bread for the World - Brout",
+   "donors": [
+    {
+     "name": "Diakonie and Development for Bread for the World - Brout",
+     "amount": null
+    }
+   ],
+   "people": {
+    "total": 4400,
+    "idps": null,
+    "returnees": 3100,
+    "refugees": null,
+    "host": 1300,
+    "other": null
+   },
+   "femaleShare": 0.6,
+   "pwdShare": 0.05,
+   "pwdFemaleShare": 0.6,
+   "peopleSex": null,
+   "remarks": null,
+   "photos": [],
+   "leadName": "ADRA, Adventist Development and Relief Agency",
+   "ref": "SD-047-ADRA-25-27"
+  },
+  {
    "id": "adra-strengthening-community-engagement-and-empowerment-in-darfur-scee",
    "name": "Strengthening community engagement and empowerment in Darfur (SCEED) and climate adaptation",
    "description": "SCEED  is a four-year project building small farmers' resilience through:\n• Building farmers' capacities with modern farming techniques using the FFS Approach.\n• Boosting farmers' marketing techniques through the FMS Approach.\n• Providing market-driven training and skills.\n• Providing life-saving assistance through MPCA.\n• Linking farmers with the early warning system and weather forecast",
