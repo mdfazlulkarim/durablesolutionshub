@@ -12,11 +12,12 @@ The page opens only with an access code. The data file is stored encrypted (AES-
 
 - Summary cards: organisations, clusters, states, localities, and organisations in the five ADSWG states.
 - Map by state or by locality, shaded by the number of organisations. Clicking a state zooms in to its localities; the five ADSWG states are outlined.
-- A switch that adds the projects published on the Solutions Footprint (`../mapping/data/projects.json`), by state, and by locality when a project names its localities.
+- The number of ongoing projects on the Solutions Footprint (`../mapping/data/projects.json`; started and not yet ended), as green circles by state, and by locality when a project names its localities. Shown by default; a switch hides them.
 - Side panel for the selected area: organisations per cluster, organisation types and the widest coverage.
 - Organisations reporting per month (select a month to filter the page).
 - "Who is where": every organisation with its clusters, states, localities and months, sortable and searchable.
 - Filters: month, organisation, cluster and organisation type.
+- OCHA Humanitarian Icons for the clusters and summary cards.
 
 Organisations are counted once per area, whatever the number of clusters or months. Rows reported without a partner name ("Other") are listed as "Other partners (not named)" and are not counted as an organisation.
 
@@ -26,10 +27,12 @@ Organisations are counted once per area, whatever the number of clusters or mont
 index.html                  The page (access code first, then the dashboard)
 assets/presence.js          Page logic, including decryption in the browser (Web Crypto)
 assets/presence.css         Styles on top of ../mapping/assets/css/style.css
+assets/icons.js             OCHA Humanitarian Icons used on the page (built by scripts/build_icons.py)
 data/presence.enc.json      The 3W data, encrypted
 data/localities-geo.json    Locality boundaries, drawn in the same projection as ../mapping/data/geo.json
 scripts/build_presence.py   Builds data/presence.enc.json from the OCHA 3W Excel export
 scripts/build_geo.js        Builds data/localities-geo.json from the boundary files in ../mapping/data/boundaries/
+scripts/build_icons.py      Builds assets/icons.js from the OCHA icon SVG files
 ```
 
 ## Update the data
