@@ -59,6 +59,72 @@
    "ref": "SD-047-ADRA-25-27"
   },
   {
+   "id": "adra-improving-the-livelihoods-of-conflict-affected-communities-elevat",
+   "name": "Improving the livelihoods of conflict-affected communities (ELEVATE)",
+   "description": "Improving the livelihoods of conflict-affected communities",
+   "interventionTypes": [
+    "Basic services rehabilitation",
+    "Livelihoods and cash-for-work",
+    "Social cohesion and peacebuilding"
+   ],
+   "lead": "ADRA",
+   "orgType": "International NGO",
+   "leadership": [],
+   "partners": [],
+   "partnerTypes": [],
+   "nationwide": false,
+   "states": [
+    "West Darfur"
+   ],
+   "localities": [
+    "Ag Geneina",
+    "Jebel Moon",
+    "Kereneik",
+    "Sirba"
+   ],
+   "criteria": [
+    3
+   ],
+   "coordination": "Food Security and Livelihoods Cluster",
+   "start": "2024-11-01",
+   "end": "2027-01-31",
+   "reportedStatus": "Ongoing",
+   "budget": 1000000,
+   "share": 0.5,
+   "dsFunding": 500000,
+   "donor": "Brot für die Welt; BMZ/EZE",
+   "donors": [
+    {
+     "name": "Brot für die Welt",
+     "amount": 500000
+    },
+    {
+     "name": "BMZ/EZE",
+     "amount": 500000
+    }
+   ],
+   "people": {
+    "total": 26783,
+    "idps": 7500,
+    "returnees": 1883,
+    "refugees": 0,
+    "host": 17400,
+    "other": 0
+   },
+   "femaleShare": 0.5,
+   "pwdShare": 0.2,
+   "pwdFemaleShare": null,
+   "peopleSex": null,
+   "remarks": null,
+   "photos": [
+    "assets/photos/SD-049-1.jpg",
+    "assets/photos/SD-049-2.jpg",
+    "assets/photos/SD-049-3.jpg"
+   ],
+   "leadName": "ADRA, Adventist Development and Relief Agency",
+   "ref": "SD-049-ADRA-24-27"
+  },
+  {
    "id": "adra-strengthening-community-engagement-and-empowerment-in-darfur-scee",
    "name": "Strengthening community engagement and empowerment in Darfur (SCEED) and climate adaptation",
    "description": "SCEED  is a four-year project building small farmers' resilience through:\n• Building farmers' capacities with modern farming techniques using the FFS Approach.\n• Boosting farmers' marketing techniques through the FMS Approach.\n• Providing market-driven training and skills.\n• Providing life-saving assistance through MPCA.\n• Linking farmers with the early warning system and weather forecast",
